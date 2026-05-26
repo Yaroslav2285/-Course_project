@@ -12,7 +12,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DB_URL: str = "postgresql+asyncpg://app_user:ChangeMe123!@localhost:5432/app_db"
+    DB_URL: str = "sqlite+aiosqlite:///./marketplace.db"
     DB_ECHO: bool = False
 
     JWT_SECRET: str = "your-super-secret-jwt-key-change-in-production-min-32-chars"
