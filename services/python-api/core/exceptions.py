@@ -1,5 +1,7 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+import logging
+
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -89,6 +91,9 @@ async def http_exception_handler(
 async def unhandled_exception_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:
+    logging.getLogger(__name__).exception(
+        "Unhandled exception: %s %s", request.method, request.url.path
+    )
     return JSONResponse(
         status_code=500,
         content={
