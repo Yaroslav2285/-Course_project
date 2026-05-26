@@ -18,23 +18,23 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {"request": request})
 
 
 @router.get("/login", response_class=HTMLResponse, include_in_schema=False)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {"request": request})
 
 
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard_page(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html", {"request": request})
 
 
 @router.get("/escrow/{order_id}", response_class=HTMLResponse, include_in_schema=False)
 async def escrow_page(request: Request, order_id: str):
     return templates.TemplateResponse(
-        "escrow_status.html", {"request": request, "order_id": order_id}
+        request, "escrow_status.html", {"request": request, "order_id": order_id}
     )
 
 
