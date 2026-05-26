@@ -1,12 +1,9 @@
 # LR #11: Containerization
 # LR #1: Git/CI
-.PHONY: up down lint test build ai-log
+.PHONY: up down lint test test-python test-go build ai-log
 
 up:
 	docker compose up -d --build
-
-own:
-	docker compose down --volumes
 
 down:
 	docker compose down --volumes
@@ -14,8 +11,13 @@ down:
 lint:
 	pre-commit run --all-files
 
-test:
-	@echo "No service tests implemented yet. Add pytest and go test targets later."
+test: test-python test-go
+
+test-python:
+	cd services/python-api && pytest -v --cov --cov-report=term
+
+test-go:
+	cd services/go-escrow && go test ./... -v -cover
 
 build:
 	docker compose build
