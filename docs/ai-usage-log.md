@@ -1,0 +1,3 @@
+| Дата/Время | Задача/Промпт | Файлы | Результат | Верификация | Ручные правки |
+|---|---|---|---|---|---|
+| 2026-05-26 | Этап 1: структура монорепозитория и инфраструктура | `docker-compose.yml`, `.env.example`, `Makefile`, `.pre-commit-config.yaml`, `.gitignore`, `.editorconfig`, `.gitattributes`, `docs/README.md`, `services/*/.gitkeep`, `infra/.gitkeep`, `scripts/.gitkeep` | Созданы базовая структура и инфраструктурные файлы | `docker compose config && make up && docker ps` и `pre-commit run --all-files` | Убедиться, что `Makefile` и `docker-compose.yml` подходят для следующего этапа с Dockerfile-ами и сервисами |
