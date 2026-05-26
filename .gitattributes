@@ -1,0 +1,7 @@
+# LR #1: Git/CI
+* text=auto
+*.py text eol=lf
+*.go text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

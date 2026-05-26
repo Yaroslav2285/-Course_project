@@ -1,0 +1,28 @@
+# LR #1: Git/CI
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pytest_cache/
+.venv/
+venv/
+
+# Environment
+.env
+.env.*
+req.txt
+manual.txt
+
+# Docker
+docker-compose.override.yml
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
