@@ -9,15 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import router as v1_router
 from api.v1.ui import mount_static, router as ui_router
 from core.config import settings
-from core.db import engine
+from core.db import engine, _is_sqlite
 from core.exceptions import (
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
 )
-from core.responses import success_response
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
 
 structlog.configure(
     processors=[
@@ -37,6 +37,14 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Service Marketplace API")
+    if _is_sqlite:
+        from models.base import Base
+        import models.users  # noqa: F401
+        import models.services  # noqa: F401
+        import models.orders  # noqa: F401
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created (SQLite)")
     yield
     logger.info("Shutting down Service Marketplace API")
     await engine.dispose()
@@ -89,11 +97,6 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
-
-
-@app.get("/")
-async def root():
-    return success_response(data={"message": "Service Marketplace API v1"})
 
 
 mount_static(app)
