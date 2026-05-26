@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Monorepo: Python (FastAPI, Stage 2–3) + Go escrow (Gin, Stage 4) + blockchain simulator (Rust, Stage 5 planned).
+Monorepo: Python (FastAPI, Stage 2–3) + Go escrow (Gin, Stage 4) + blockchain simulator (Python/FastAPI, Stage 5).
 
 **Branch:** `step_4` — all work is here.
 **Server:** `http://localhost:8000` (Python API), `http://localhost:8081` (Go escrow).
@@ -334,7 +334,7 @@ make test
 
 ## Known Issues / Next Steps
 
-- **Stage 5 (planned):** Blockchain simulator service (Rust) — simulates on-chain escrow smart contract
+- **Stage 5 (done):** Blockchain simulator service (Python/FastAPI) — SHA-256 audit trail for escrow status changes
 - Integration tests across Python + Go + Blockchain-sim not yet written
 - UI lacks: password reset, profile editing, admin panel, service search/filter
 - Orders don't actually interact with external escrow system (order status updated via PATCH, not through go-escrow)
