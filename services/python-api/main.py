@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import router as v1_router
 from api.v1.ui import mount_static, router as ui_router
 from core.config import settings
-from core.db import engine, _is_sqlite
+from core.db import engine
 from core.exceptions import (
     http_exception_handler,
     unhandled_exception_handler,
@@ -37,14 +37,13 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Service Marketplace API")
-    if _is_sqlite:
-        from models.base import Base
-        import models.users  # noqa: F401
-        import models.services  # noqa: F401
-        import models.orders  # noqa: F401
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables created (SQLite)")
+    from models.base import Base
+    import models.users  # noqa: F401
+    import models.services  # noqa: F401
+    import models.orders  # noqa: F401
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables created")
     yield
     logger.info("Shutting down Service Marketplace API")
     await engine.dispose()
