@@ -2,6 +2,7 @@
 -- LR #3: OOP/FP
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Escrow accounts (FK to orders removed — Go service validates via API)
 CREATE TABLE IF NOT EXISTS escrow_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL,
@@ -9,7 +10,6 @@ CREATE TABLE IF NOT EXISTS escrow_accounts (
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT fk_escrow_order FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
     CONSTRAINT chk_escrow_balance_non_negative CHECK (balance >= 0)
 );
 
@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT fk_transaction_escrow FOREIGN KEY(escrow_account_id) REFERENCES escrow_accounts(id) ON DELETE CASCADE,
-    CONSTRAINT fk_transaction_order FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
     CONSTRAINT chk_transaction_amount_positive CHECK (amount > 0)
 );
 
@@ -40,7 +39,6 @@ CREATE TABLE IF NOT EXISTS disputes (
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT fk_dispute_order FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
     CONSTRAINT fk_dispute_escrow FOREIGN KEY(escrow_account_id) REFERENCES escrow_accounts(id) ON DELETE CASCADE
 );
 
