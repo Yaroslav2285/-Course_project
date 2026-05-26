@@ -1,5 +1,10 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+import os
+
+# Force SQLite for tests regardless of .env or working directory
+os.environ["DB_URL"] = "sqlite+aiosqlite:///./test.db"
+
 import asyncio
 from typing import AsyncGenerator
 from uuid import uuid4
@@ -7,10 +12,11 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import settings
-from core.db import get_db
+from core.db import _register_sqlite_now, get_db
 from core.security import hash_password
 from main import app
 from models.base import Base
@@ -29,6 +35,8 @@ def event_loop():
 @pytest_asyncio.fixture(scope="function")
 async def engine():
     async_engine = create_async_engine(TEST_DB_URL, echo=False)
+    if TEST_DB_URL.startswith("sqlite"):
+        event.listen(async_engine.sync_engine, "connect", _register_sqlite_now)
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield async_engine
