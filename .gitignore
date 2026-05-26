@@ -21,6 +21,9 @@ manual.txt
 docker-compose.override.yml
 *.log
 
+# AI session context (not for students)
+README_AI.md
+
 # IDEs
 .vscode/
 .idea/
