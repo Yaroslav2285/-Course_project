@@ -1,7 +1,22 @@
 # LR #6: Web/DB
-# LR #3: OOP/FP
-# Minimal dependencies for database migration and schema generation.
-# FastAPI and Pydantic will be added in a later stage when the runtime target is finalized.
+# LR #2: Modern Python
+# LR #4: Async/Web
+# LR #3: Financial precision
 alembic==1.18.4
 SQLAlchemy==2.0.50
 asyncpg==0.31.0
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.2
+pydantic-settings==2.8.1
+pydantic-extra-types==2.10.4
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1  # Downgrade from 5.x to avoid 72-byte password limit
+structlog==25.1.0
+python-multipart==0.0.20
+httpx==0.28.1
+pytest==8.3.5
+pytest-asyncio==0.25.3
+pytest-cov==6.1.1
+ruff==0.11.2
