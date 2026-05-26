@@ -7,6 +7,7 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1 import router as v1_router
+from api.v1.ui import mount_static, router as ui_router
 from core.config import settings
 from core.db import engine
 from core.exceptions import (
@@ -95,4 +96,6 @@ async def root():
     return success_response(data={"message": "Service Marketplace API v1"})
 
 
+mount_static(app)
+app.include_router(ui_router)
 app.include_router(v1_router)
