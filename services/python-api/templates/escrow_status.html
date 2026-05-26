@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Эскароу статус — Marketplace{% endblock %}
+{% block content %}
+{% raw %}
+<div id="alert-container"></div>
+<div id="escrow-content">
+  <div class="text-center"><div class="spinner"></div><p class="text-secondary mt-4">Загрузка информации об эскароу...</p></div>
+</div>
+{% endraw %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!isLoggedIn()) { window.location.href = '/login'; return; }
+  const orderId = window.location.pathname.split('/').pop();
+  const content = document.getElementById('escrow-content');
+
+  try {
+    const data = await getOrder(orderId);
+    const order = data.data;
+    content.innerHTML = `
+      <h1 class="mb-4">Эскароу статус</h1>
+      <div class="card mb-4">
+        <div class="flex-between mb-4">
+          <div>
+            <strong>Заказ:</strong> ${order.id}
+          </div>
+          <div>${renderBadge(order.status)}</div>
+        </div>
+        <div class="mb-4">
+          ${renderEscrowStatus(order.status)}
+        </div>
+        <div class="grid grid-2">
+          <div><strong>Сумма:</strong> ${order.amount} ₽</div>
+          <div><strong>Дата:</strong> ${new Date(order.created_at).toLocaleString()}</div>
+          <div><strong>Комментарий:</strong> ${order.notes || '—'}</div>
+        </div>
+      </div>
+      <div class="card mb-4">
+        <h3 class="mb-4">Управление статусом</h3>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" onclick="updateStatus('${orderId}', 'funded')" ${order.status !== 'pending' ? 'disabled' : ''}>
+            FUND → Забронировать средства
+          </button>
+          <button class="btn btn-success" style="background:var(--color-success);color:white;" onclick="updateStatus('${orderId}', 'released')" ${order.status !== 'funded' ? 'disabled' : ''}>
+            RELEASE → Выплатить
+          </button>
+          <button class="btn btn-danger" onclick="updateStatus('${orderId}', 'cancelled')" ${order.status === 'released' || order.status === 'cancelled' ? 'disabled' : ''}>
+            CANCEL → Отменить
+          </button>
+          <button class="btn btn-outline" onclick="updateStatus('${orderId}', 'disputed')" ${order.status !== 'funded' && order.status !== 'pending' ? 'disabled' : ''}>
+            DISPUTE → Открыть спор
+          </button>
+        </div>
+      </div>
+      <a href="/dashboard" class="btn btn-outline">← Назад в кабинет</a>
+    `;
+  } catch (e) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(e.message)}</div>`;
+  }
+});
+
+async function updateStatus(orderId, status) {
+  try {
+    const data = await updateOrderStatus(orderId, status);
+    showAlert(`Статус изменён на: ${status}`, 'success');
+    // Reload page to reflect new status
+    setTimeout(() => window.location.reload(), 1000);
+  } catch (e) {
+    showAlert(e.message);
+  }
+}
+</script>
+{% endblock %}

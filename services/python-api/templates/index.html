@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Каталог услуг — Marketplace{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 24px;">Каталог услуг</h1>
+<div id="services-loading" class="text-center">
+  <div class="spinner"></div>
+  <p class="text-secondary mt-4">Загрузка услуг...</p>
+</div>
+<div class="grid grid-2" id="services-grid"></div>
+<div class="pagination" id="services-pagination"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const grid = document.getElementById('services-grid');
+  const loading = document.getElementById('services-loading');
+  const pagination = document.getElementById('services-pagination');
+  let offset = 0;
+  const limit = 20;
+
+  async function loadServices() {
+    loading.classList.remove('hidden');
+    try {
+      const data = await fetchServices(limit, offset);
+      const items = data.data || [];
+      const total = data.meta?.total || items.length;
+      grid.innerHTML = items.map(renderServiceCard).join('');
+      const pages = Math.ceil(total / limit);
+      const currentPage = Math.floor(offset / limit) + 1;
+      pagination.innerHTML = `
+        <button ${offset === 0 ? 'disabled' : ''} onclick="offset=${Math.max(0, offset - limit)};loadServices()">← Назад</button>
+        <span class="page-info">${currentPage} / ${pages || 1}</span>
+        <button ${offset + limit >= total ? 'disabled' : ''} onclick="offset+=${limit};loadServices()">Вперёд →</button>
+      `;
+      document.querySelectorAll('.order-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!isLoggedIn()) { window.location.href = '/login'; return; }
+          const id = btn.dataset.id;
+          const seller = btn.dataset.seller;
+          const price = btn.dataset.price;
+          window.location.href = `/dashboard?order_service=${id}&seller=${seller}&price=${price}`;
+        });
+      });
+    } catch (e) {
+      showAlert(e.message);
+    } finally {
+      loading.classList.add('hidden');
+    }
+  }
+
+  await loadServices();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Вход — Marketplace{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h2 id="form-title">Вход</h2>
+    <div id="alert-container"></div>
+    <form id="auth-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="user@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Пароль</label>
+        <input type="password" id="password" class="form-control" placeholder="Минимум 8 символов" minlength="8" required>
+      </div>
+      <div class="form-group hidden" id="role-group">
+        <label for="role">Роль</label>
+        <select id="role" class="form-control">
+          <option value="client">Клиент</option>
+          <option value="provider">Исполнитель</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%" id="submit-btn">Войти</button>
+    </form>
+    <div class="auth-switch">
+      <span id="switch-text">Нет аккаунта?</span>
+      <a id="switch-link">Зарегистрироваться</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('auth-form');
+  const email = document.getElementById('email');
+  const password = document.getElementById('password');
+  const roleGroup = document.getElementById('role-group');
+  const role = document.getElementById('role');
+  const formTitle = document.getElementById('form-title');
+  const submitBtn = document.getElementById('submit-btn');
+  const switchLink = document.getElementById('switch-link');
+  const switchText = document.getElementById('switch-text');
+  let isRegister = false;
+  let isProcessing = false;
+
+  switchLink.addEventListener('click', () => {
+    isRegister = !isRegister;
+    roleGroup.classList.toggle('hidden', !isRegister);
+    formTitle.textContent = isRegister ? 'Регистрация' : 'Вход';
+    submitBtn.textContent = isRegister ? 'Зарегистрироваться' : 'Войти';
+    switchText.textContent = isRegister ? 'Уже есть аккаунт?' : 'Нет аккаунта?';
+    switchLink.textContent = isRegister ? 'Войти' : 'Зарегистрироваться';
+    clearAlerts();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isProcessing) return;
+    isProcessing = true;
+    clearAlerts();
+    form.querySelectorAll('.form-error').forEach(el => el.remove());
+
+    let hasError = false;
+    if (!email.value.trim()) {
+      showFieldError(email, 'Email обязателен');
+      hasError = true;
+    }
+    if (password.value.length < 8) {
+      showFieldError(password, 'Пароль минимум 8 символов');
+      hasError = true;
+    }
+    if (hasError) { isProcessing = false; return; }
+
+    try {
+      if (isRegister) {
+        await handleRegister(email.value.trim(), password.value, role.value);
+      } else {
+        await handleLogin(email.value.trim(), password.value);
+      }
+    } catch (err) {
+      showAlert(err.message);
+      isProcessing = false;
+    }
+  });
+
+  function showFieldError(input, msg) {
+    const err = document.createElement('div');
+    err.className = 'form-error';
+    err.textContent = msg;
+    input.parentNode.appendChild(err);
+    input.style.borderColor = 'var(--color-danger)';
+    input.addEventListener('input', () => {
+      input.style.borderColor = '';
+      err.remove();
+    }, { once: true });
+  }
+});
+</script>
+{% endblock %}
