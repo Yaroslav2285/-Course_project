@@ -223,3 +223,54 @@ class TestBlockchainSim:
         assert response.status_code == 422
         errors = response.json()["detail"]
         assert any(e["loc"][-1] == "action" for e in errors)
+
+    def test_submit_minimal_order_id(self, client):
+        response = client.post(
+            "/v1/chain/submit", json={"order_id": "a", "action": "x"}
+        )
+        assert response.status_code == 201
+
+    def test_submit_special_chars_in_action(self, client):
+        response = client.post(
+            "/v1/chain/submit", json={"order_id": "spec", "action": "!@#$%^&*()"}
+        )
+        assert response.status_code == 201
+
+    def test_submit_nested_data(self, client):
+        response = client.post(
+            "/v1/chain/submit",
+            json={
+                "order_id": "nest",
+                "action": "test",
+                "data": {"nested": {"deep": [1, 2, 3]}},
+            },
+        )
+        assert response.status_code == 201
+
+    def test_submit_preserves_data_unchanged(self, client):
+        client.post(
+            "/v1/chain/submit",
+            json={"order_id": "data-1", "action": "test", "data": {"key": "value"}},
+        )
+        resp = client.get("/v1/chain/audit/data-1").json()
+        assert resp[0]["transactions"][0]["data"] == {"key": "value"}
+        assert resp[0]["transactions"][0]["action"] == "test"
+        assert resp[0]["transactions"][0]["order_id"] == "data-1"
+
+    def test_env_config_override(self, monkeypatch, tmp_path):
+        monkeypatch.setattr("config.settings.db_path", str(tmp_path / "custom.db"))
+        monkeypatch.setattr("config.settings.log_level", "DEBUG")
+
+        from config import settings as cfg
+
+        assert "custom.db" in cfg.db_path
+        assert cfg.log_level == "DEBUG"
+
+    def test_concurrent_blocks_stay_valid(self, client):
+        for i in range(5):
+            client.post(
+                "/v1/chain/submit", json={"order_id": f"conc-{i}", "action": "test"}
+            )
+        response = client.get("/v1/chain/verify")
+        assert response.json()["valid"] is True
+        assert response.json()["blocks_count"] == 6
