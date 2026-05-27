@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/marketplace/go-escrow/internal/api"
+	"github.com/marketplace/go-escrow/internal/clients"
 	"github.com/marketplace/go-escrow/internal/config"
 	"github.com/marketplace/go-escrow/internal/db"
 	"github.com/marketplace/go-escrow/internal/repository"
@@ -71,7 +72,8 @@ func main() {
 	logger.Info("Connected to database")
 
 	repo := repository.NewEscrowRepository(database.DB, logger)
-	svc := service.NewEscrowService(repo, database.DB, logger)
+	blockchainCli := clients.NewBlockchainClient(cfg.BlockchainSimURL, logger)
+	svc := service.NewEscrowService(repo, database.DB, logger, blockchainCli)
 
 	rateLimiter := api.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	defer rateLimiter.Stop()

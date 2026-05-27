@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 
+	"github.com/marketplace/go-escrow/internal/clients"
 	internaldb "github.com/marketplace/go-escrow/internal/db"
 	"github.com/marketplace/go-escrow/internal/domain"
 	"github.com/marketplace/go-escrow/internal/repository"
@@ -27,17 +28,19 @@ type CreateEscrowRequest struct {
 type TransactionFunc func(db *sql.DB, opts *sql.TxOptions, fn func(tx *sql.Tx) error) error
 
 type EscrowService struct {
-	repo   repository.EscrowRepository
-	db     *sql.DB
-	log    *zap.Logger
-	withTx TransactionFunc
+	repo            repository.EscrowRepository
+	db              *sql.DB
+	log             *zap.Logger
+	withTx          TransactionFunc
+	blockchainCli   *clients.BlockchainClient
 }
 
-func NewEscrowService(repo repository.EscrowRepository, database *sql.DB, log *zap.Logger) *EscrowService {
+func NewEscrowService(repo repository.EscrowRepository, database *sql.DB, log *zap.Logger, blockchainCli *clients.BlockchainClient) *EscrowService {
 	return &EscrowService{
-		repo: repo,
-		db:   database,
-		log:  log,
+		repo:          repo,
+		db:            database,
+		log:           log,
+		blockchainCli: blockchainCli,
 		withTx: func(d *sql.DB, opts *sql.TxOptions, fn func(tx *sql.Tx) error) error {
 			return internaldb.WithTx(d, opts, fn)
 		},
@@ -59,6 +62,9 @@ func (s *EscrowService) Create(ctx context.Context, req CreateEscrowRequest) (*d
 	}
 
 	s.log.Info("escrow created", zap.String("id", account.ID.String()), zap.String("order_id", account.OrderID.String()))
+
+	go s.emitBlockchainEvent(context.Background(), account, "CREATED") // #nosec G118 — intentional: async fire-and-forget, must outlive request
+
 	return account, nil
 }
 
@@ -106,6 +112,9 @@ func (s *EscrowService) Fund(ctx context.Context, id uuid.UUID, amount decimal.D
 	account.UpdatedAt = time.Now().UTC()
 
 	s.log.Info("escrow funded", zap.String("id", id.String()), zap.String("amount", amount.String()))
+
+	go s.emitBlockchainEvent(context.Background(), account, "FUNDED") // #nosec G118 — intentional: async fire-and-forget
+
 	return account, nil
 }
 
@@ -173,6 +182,9 @@ func (s *EscrowService) Release(ctx context.Context, id uuid.UUID) (*domain.Escr
 	account.UpdatedAt = time.Now().UTC()
 
 	s.log.Info("escrow released", zap.String("id", id.String()), zap.String("amount", account.Balance.String()))
+
+	go s.emitBlockchainEvent(context.Background(), account, "RELEASED") // #nosec G118 — intentional: async fire-and-forget
+
 	return account, nil
 }
 
@@ -217,6 +229,9 @@ func (s *EscrowService) Dispute(ctx context.Context, id uuid.UUID, reason string
 	account.UpdatedAt = time.Now().UTC()
 
 	s.log.Info("escrow disputed", zap.String("id", id.String()), zap.String("reason", reason))
+
+	go s.emitBlockchainEvent(context.Background(), account, "DISPUTED") // #nosec G118 — intentional: async fire-and-forget
+
 	return account, nil
 }
 
@@ -226,4 +241,29 @@ func (s *EscrowService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Escr
 		return nil, fmt.Errorf("get escrow: %w", err)
 	}
 	return account, nil
+}
+
+func (s *EscrowService) emitBlockchainEvent(ctx context.Context, account *domain.EscrowAccount, action string) {
+	if s.blockchainCli == nil {
+		return
+	}
+
+	event := &clients.BlockchainEvent{
+		OrderID: account.OrderID.String(),
+		Action:  action,
+		Data: map[string]any{
+			"escrow_id": account.ID.String(),
+			"status":    string(account.Status),
+			"amount":    account.Balance.String(),
+		},
+	}
+
+	_, err := s.blockchainCli.SubmitEvent(ctx, event)
+	if err != nil {
+		s.log.Warn("blockchain event emission failed (non-blocking)",
+			zap.String("escrow_id", account.ID.String()),
+			zap.String("action", action),
+			zap.Error(err),
+		)
+	}
 }
