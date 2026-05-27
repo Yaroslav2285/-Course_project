@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     SERVER_RELOAD: bool = True
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 
+    GO_ESCROW_BASE_URL: str = "http://go-escrow:8081"
+
     LOG_LEVEL: str = "INFO"
 
     @property
