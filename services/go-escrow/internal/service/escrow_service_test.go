@@ -89,7 +89,7 @@ func (m *mockRepo) GetTransactionsByEscrowID(ctx context.Context, id uuid.UUID) 
 
 func newTestService(repo repository.EscrowRepository) *EscrowService {
 	logger, _ := zap.NewDevelopment()
-	svc := NewEscrowService(repo, nil, logger)
+	svc := NewEscrowService(repo, nil, logger, nil)
 	// Override withTx to bypass real DB in unit tests
 	svc.withTx = func(_ *sql.DB, _ *sql.TxOptions, fn func(tx *sql.Tx) error) error {
 		return fn(nil)
