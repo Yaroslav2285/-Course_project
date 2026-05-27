@@ -17,6 +17,10 @@ venv/
 req.txt
 manual.txt
 
+# Coverage & SAST artifacts
+cover
+*-report.json
+
 # Docker
 docker-compose.override.yml
 *.log
