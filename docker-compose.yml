@@ -51,6 +51,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET: ${JWT_SECRET:-supersecretplaceholder}
       PYTHON_API_PORT: ${PYTHON_API_PORT:-8000}
+      GO_ESCROW_BASE_URL: ${GO_ESCROW_BASE_URL:-http://go-escrow:8081}
     ports:
       - "8000:8000"
     depends_on:
@@ -75,6 +76,7 @@ services:
     environment:
       DB_URL: ${DB_URL:-postgresql://app_user:ChangeMe123!@postgres:5432/app_db?sslmode=disable}
       GO_ESCROW_PORT: ${GO_ESCROW_PORT:-8081}
+      BLOCKCHAIN_SIM_URL: ${BLOCKCHAIN_SIM_URL:-http://blockchain-sim:8082}
     ports:
       - "8081:8081"
     depends_on:
