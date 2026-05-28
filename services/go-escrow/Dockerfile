@@ -11,15 +11,19 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /build/go-escrow .
+    go build -ldflags="-s -w" -o /build/go-escrow . && \
+    go build -ldflags="-s -w" -o /build/healthcheck ./cmd/healthcheck/
 
 FROM gcr.io/distroless/base-debian12:nonroot
 
 COPY --from=builder /build/go-escrow /go-escrow
+COPY --from=builder /build/healthcheck /healthcheck
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8081
 
 USER nonroot:nonroot
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=3s --retries=3 CMD ["/healthcheck"]
 
 ENTRYPOINT ["/go-escrow"]
