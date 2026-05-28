@@ -41,6 +41,9 @@ func NewRouter(svc *service.EscrowService, log *zap.Logger, rateLimiter *RateLim
 		fundGroup.Use(RateLimitMiddleware(rateLimiter))
 		fundGroup.POST("", IdempotencyMiddleware(idempotencyStore), handler.Fund)
 
+		// Advance status (e.g. FUNDED -> IN_PROGRESS -> COMPLETED)
+		v1.POST("/:id/advance", handler.Advance)
+
 		// Release
 		v1.POST("/:id/release", IdempotencyMiddleware(idempotencyStore), handler.Release)
 

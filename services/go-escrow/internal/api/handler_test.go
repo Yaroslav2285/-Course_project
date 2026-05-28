@@ -42,6 +42,16 @@ func (m *mockEscrowSvc) Create(_ context.Context, req service.CreateEscrowReques
 	return account, nil
 }
 
+func (m *mockEscrowSvc) AdvanceStatus(_ context.Context, id uuid.UUID, nextStatus domain.EscrowStatus) (*domain.EscrowAccount, error) {
+	account, ok := m.accounts[id]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	account.Status = nextStatus
+	account.UpdatedAt = time.Now().UTC()
+	return account, nil
+}
+
 func (m *mockEscrowSvc) Fund(_ context.Context, id uuid.UUID, amount decimal.Decimal) (*domain.EscrowAccount, error) {
 	account, ok := m.accounts[id]
 	if !ok {
@@ -99,6 +109,7 @@ func setupTestRouter() (*gin.Engine, *mockEscrowSvc) {
 		v1.POST("/", handler.Create)
 		v1.GET("/:id", handler.GetByID)
 		v1.POST("/:id/fund", handler.Fund)
+		v1.POST("/:id/advance", handler.Advance)
 		v1.POST("/:id/release", handler.Release)
 		v1.POST("/:id/dispute", handler.Dispute)
 	}
@@ -323,6 +334,66 @@ func TestDisputeEscrow(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	data := resp["data"].(map[string]interface{})
 	assert.Equal(t, "DISPUTED", data["status"])
+}
+
+func TestAdvanceEscrow_Success(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	orderID := uuid.New()
+	account := &domain.EscrowAccount{
+		ID:        uuid.New(),
+		OrderID:   orderID,
+		Balance:   decimal.NewFromFloat(100.00),
+		Status:    domain.StatusFunded,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	svc.accounts[account.ID] = account
+
+	body := map[string]interface{}{
+		"status": "IN_PROGRESS",
+	}
+	b, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+account.ID.String()+"/advance", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, "IN_PROGRESS", data["status"])
+}
+
+func TestAdvanceEscrow_InvalidUUID(t *testing.T) {
+	r, _ := setupTestRouter()
+
+	body := map[string]interface{}{"status": "IN_PROGRESS"}
+	b, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/not-a-uuid/advance", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAdvanceEscrow_NotFound(t *testing.T) {
+	r, _ := setupTestRouter()
+
+	body := map[string]interface{}{"status": "IN_PROGRESS"}
+	b, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/advance", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestInvalidUUID(t *testing.T) {

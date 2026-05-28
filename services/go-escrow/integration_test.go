@@ -210,6 +210,23 @@ func (m *mockIntegrationEscrowSvc) Create(_ context.Context, req service.CreateE
 	}, nil
 }
 
+func (m *mockIntegrationEscrowSvc) AdvanceStatus(_ context.Context, id uuid.UUID, nextStatus domain.EscrowStatus) (*domain.EscrowAccount, error) {
+	acc, ok := m.accounts[id.String()]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	acc.Status = string(nextStatus)
+	acc.UpdatedAt = time.Now().UTC()
+	return &domain.EscrowAccount{
+		ID:        id,
+		OrderID:   uuid.MustParse(acc.OrderID),
+		Balance:   acc.Balance,
+		Status:    nextStatus,
+		CreatedAt: acc.CreatedAt,
+		UpdatedAt: acc.UpdatedAt,
+	}, nil
+}
+
 func (m *mockIntegrationEscrowSvc) Fund(_ context.Context, id uuid.UUID, amount decimal.Decimal) (*domain.EscrowAccount, error) {
 	acc, ok := m.accounts[id.String()]
 	if !ok {

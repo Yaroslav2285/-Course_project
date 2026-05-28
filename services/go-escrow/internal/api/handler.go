@@ -20,6 +20,7 @@ import (
 type EscrowService interface {
 	Create(ctx context.Context, req service.CreateEscrowRequest) (*domain.EscrowAccount, error)
 	Fund(ctx context.Context, id uuid.UUID, amount decimal.Decimal) (*domain.EscrowAccount, error)
+	AdvanceStatus(ctx context.Context, id uuid.UUID, nextStatus domain.EscrowStatus) (*domain.EscrowAccount, error)
 	Release(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 	Dispute(ctx context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
@@ -161,6 +162,40 @@ func (h *EscrowHandler) Dispute(c *gin.Context) {
 			writeErrorResponse(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "not found") {
+			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "invalid transition") {
+			writeErrorResponse(c, http.StatusConflict, "INVALID_TRANSITION", err.Error())
+			return
+		}
+		writeErrorResponse(c, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, account)
+}
+
+func (h *EscrowHandler) Advance(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeErrorResponse(c, http.StatusBadRequest, "INVALID_UUID", "id must be a valid UUID")
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeErrorResponse(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body: "+err.Error())
+		return
+	}
+
+	nextStatus := domain.EscrowStatus(strings.ToUpper(strings.TrimSpace(req.Status)))
+	account, err := h.svc.AdvanceStatus(c.Request.Context(), id, nextStatus)
+	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 			return
