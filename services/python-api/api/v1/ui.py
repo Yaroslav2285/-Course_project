@@ -26,15 +26,47 @@ async def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"request": request})
 
 
+@router.get("/register", response_class=HTMLResponse, include_in_schema=False)
+async def register_page(request: Request):
+    return templates.TemplateResponse(request, "register.html", {"request": request})
+
+
+@router.get("/catalog", response_class=HTMLResponse, include_in_schema=False)
+async def catalog_page(request: Request):
+    return templates.TemplateResponse(request, "catalog.html", {"request": request})
+
+
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard_page(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", {"request": request})
 
 
-@router.get("/escrow/{order_id}", response_class=HTMLResponse, include_in_schema=False)
-async def escrow_page(request: Request, order_id: str):
+@router.get("/dashboard/client", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard_client_page(request: Request):
+    return templates.TemplateResponse(request, "dashboard_client.html", {"request": request})
+
+
+@router.get("/dashboard/executor", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard_executor_page(request: Request):
+    return templates.TemplateResponse(request, "dashboard_executor.html", {"request": request})
+
+
+@router.get("/orders", response_class=HTMLResponse, include_in_schema=False)
+async def orders_page(request: Request):
+    return templates.TemplateResponse(request, "orders.html", {"request": request})
+
+
+@router.get("/orders/{order_id}", response_class=HTMLResponse, include_in_schema=False)
+async def order_detail_page(request: Request, order_id: str):
     return templates.TemplateResponse(
-        request, "escrow_status.html", {"request": request, "order_id": order_id}
+        request, "order_detail.html", {"request": request, "order_id": order_id}
+    )
+
+
+@router.get("/audit/{order_id}", response_class=HTMLResponse, include_in_schema=False)
+async def audit_page(request: Request, order_id: str):
+    return templates.TemplateResponse(
+        request, "audit.html", {"request": request, "order_id": order_id}
     )
 
 

@@ -1,0 +1,25 @@
+<!-- LR #6: Web/DB — Client dashboard (placeholder for Phase 7.3) -->
+{% extends "base.html" %}
+{% block title %}Client Dashboard — Service Marketplace{% endblock %}
+{% block content %}
+<h1 class="mb-4">Client Dashboard</h1>
+<div id="alert-container"></div>
+
+<div class="card mb-4">
+  <div class="card-header">My Orders</div>
+  <div id="orders-content">
+    <p class="text-secondary">Order management will be available in the next update.</p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Escrow Status</div>
+  <div id="escrow-content">
+    <p class="text-secondary">Escrow tracking will be available in the next update.</p>
+  </div>
+</div>
+
+<div class="flex gap-2">
+  <a href="/catalog" class="btn btn-primary">Browse Services</a>
+</div>
+{% endblock %}

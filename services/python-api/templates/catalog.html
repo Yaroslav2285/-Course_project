@@ -1,0 +1,80 @@
+<!-- LR #6: Web/DB — Catalog page with filters, grid, pagination -->
+<!-- LR #10: Multi-lang/REST — Client-side filtering & sorting -->
+<!-- LR #12: AI Integration — skeleton loading, empty/error states -->
+{% extends "base.html" %}
+{% block title %}Service Catalog — Service Marketplace{% endblock %}
+{% block content %}
+<div class="catalog-layout">
+  <!-- Sidebar -->
+  <aside class="catalog-sidebar" id="catalog-sidebar">
+    <div class="sidebar-header">
+      <h3>Filters</h3>
+      <button class="sidebar-close" id="sidebar-close" aria-label="Close filters">&times;</button>
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-search">Search</label>
+      <input type="text" id="filter-search" class="form-control" placeholder="Search services..." autocomplete="off">
+    </div>
+
+    <div class="filter-group">
+      <label>Price Range</label>
+      <div class="price-range">
+        <input type="number" id="filter-price-min" class="form-control" placeholder="Min" min="0" step="0.01">
+        <span class="price-separator">—</span>
+        <input type="number" id="filter-price-max" class="form-control" placeholder="Max" min="0" step="0.01">
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label for="filter-sort">Sort By</label>
+      <select id="filter-sort" class="form-control">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="price_desc">Price: High to Low</option>
+        <option value="title_asc">Title: A-Z</option>
+      </select>
+    </div>
+
+    <div class="sidebar-actions">
+      <button id="filter-apply" class="btn btn-primary w-full">Apply</button>
+      <button id="filter-reset" class="btn btn-outline w-full">Reset</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <section class="catalog-main">
+    <div class="catalog-header">
+      <h1>Service Catalog</h1>
+      <button class="btn btn-outline btn-sm sidebar-toggle" id="sidebar-toggle">Filters</button>
+    </div>
+
+    <!-- Loading skeletons -->
+    <div class="services-grid" id="services-grid">
+      <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
+      <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
+      <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
+    </div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">&#128270;</div>
+      <h3>No services found</h3>
+      <p>Try adjusting your search or filter criteria.</p>
+    </div>
+
+    <div id="error-state" class="error-state hidden">
+      <div class="error-icon">&#9888;&#65039;</div>
+      <h3>Something went wrong</h3>
+      <p id="error-message">Failed to load services. Please try again.</p>
+      <button id="error-retry" class="btn btn-primary">Retry</button>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination hidden" id="pagination"></div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/api/static/js/catalog.js"></script>
+{% endblock %}

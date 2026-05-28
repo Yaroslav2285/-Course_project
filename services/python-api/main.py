@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from api.v1 import router as v1_router
 from core.config import settings
 
@@ -106,4 +107,9 @@ async def health():
 if HAS_UI:
     mount_static(app)
     app.include_router(ui_router)
+    # LR #6: Mount static at /api/static for root_path compatibility
+    from pathlib import Path
+    from api.v1.ui import STATIC_DIR
+    if Path(STATIC_DIR).exists():
+        app.mount("/api/static", StaticFiles(directory=str(STATIC_DIR)), name="api_static")
 app.include_router(v1_router)

@@ -1,54 +1,37 @@
+<!-- LR #6: Web/DB — Landing page for Service Marketplace -->
+<!-- LR #12: AI Integration — hero section with CTA buttons -->
 {% extends "base.html" %}
-{% block title %}Каталог услуг — Marketplace{% endblock %}
+{% block title %}Service Marketplace — Secure Escrow Payments{% endblock %}
 {% block content %}
-<h1 style="margin-bottom: 24px;font-size: 50px;" class="text-center">Каталог услуг</h1>
-<div id="services-loading" class="text-center">
-  <div class="spinner"></div>
-  <p class="text-secondary mt-4">Загрузка услуг...</p>
+<div class="hero">
+  <h1>Service Marketplace</h1>
+  <p>A platform for ordering services with secure escrow-based payments.
+     Every transaction is audited on the blockchain for full transparency.</p>
+  <div class="hero-actions">
+    <a href="/register" class="btn btn-primary btn-lg">Get Started</a>
+    <a href="/login" class="btn btn-outline btn-lg">Sign In</a>
+    <a href="/catalog" class="btn btn-outline btn-lg">Browse Services</a>
+  </div>
 </div>
-<div class="grid grid-2" id="services-grid"></div>
-<div class="pagination" id="services-pagination"></div>
-{% endblock %}
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const grid = document.getElementById('services-grid');
-  const loading = document.getElementById('services-loading');
-  const pagination = document.getElementById('services-pagination');
-  let offset = 0;
-  const limit = 20;
 
-  async function loadServices() {
-    loading.classList.remove('hidden');
-    try {
-      const data = await fetchServices(limit, offset);
-      const items = data.data || [];
-      const total = data.meta?.total || items.length;
-      grid.innerHTML = items.map(renderServiceCard).join('');
-      const pages = Math.ceil(total / limit);
-      const currentPage = Math.floor(offset / limit) + 1;
-      pagination.innerHTML = `
-        <button ${offset === 0 ? 'disabled' : ''} onclick="offset=${Math.max(0, offset - limit)};loadServices()">← Назад</button>
-        <span class="page-info">${currentPage} / ${pages || 1}</span>
-        <button ${offset + limit >= total ? 'disabled' : ''} onclick="offset+=${limit};loadServices()">Вперёд →</button>
-      `;
-      document.querySelectorAll('.order-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          if (!isLoggedIn()) { window.location.href = '/login'; return; }
-          const id = btn.dataset.id;
-          const seller = btn.dataset.seller;
-          const price = btn.dataset.price;
-          window.location.href = `/dashboard?order_service=${id}&seller=${seller}&price=${price}`;
-        });
-      });
-    } catch (e) {
-      showAlert(e.message);
-    } finally {
-      loading.classList.add('hidden');
-    }
-  }
-
-  await loadServices();
-});
-</script>
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon">🔒</div>
+    <h3>Escrow System</h3>
+    <p>Funds are locked in an escrow account and released only after work confirmation,
+       ensuring safety for both parties.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🔗</div>
+    <h3>Blockchain Audit</h3>
+    <p>Every status change is recorded in a SHA-256 blockchain,
+       providing an immutable audit trail for all transactions.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">⚡</div>
+    <h3>Instant Settlement</h3>
+    <p>Automated payment processing through a high-performance Go microservice
+       with guaranteed delivery and idempotency.</p>
+  </div>
+</div>
 {% endblock %}

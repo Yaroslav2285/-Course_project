@@ -1,0 +1,48 @@
+<!-- LR #6: Web/DB — Registration page with client-side validation -->
+<!-- LR #12: AI Integration — registration form with role selection -->
+{% extends "base.html" %}
+{% block title %}Register — Service Marketplace{% endblock %}
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h2>Create Account</h2>
+    <div id="alert-container"></div>
+    <form id="register-form" novalidate>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="user@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="At least 8 characters" minlength="8" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="password-confirm">Confirm Password</label>
+        <input type="password" id="password-confirm" class="form-control" placeholder="Repeat password" minlength="8" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="role">I want to</label>
+        <select id="role" class="form-control" required>
+          <option value="client">Order services (Client)</option>
+          <option value="provider">Provide services (Executor)</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Create Account</button>
+    </form>
+    <div class="auth-switch">
+      <span>Already have an account?</span>
+      <a href="/login">Sign In</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.getElementById('register-form');
+  if (form) {
+    form.addEventListener('submit', handleRegister);
+  }
+});
+</script>
+{% endblock %}
