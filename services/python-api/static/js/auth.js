@@ -170,8 +170,14 @@ function handleLogout(event) {
 
 // === Update navbar based on auth state ===
 function updateNavbar() {
+  console.log('updateNavbar called, auth:', checkAuth());
   var nav = document.getElementById('navbar');
   if (!nav) return;
+
+  var menu = document.getElementById('navbar-menu');
+  var userSection = document.getElementById('navbar-user');
+  var emailEl = document.getElementById('user-email');
+  var roleEl = document.getElementById('user-role');
 
   var auth = checkAuth();
   var user = auth.user;
@@ -184,32 +190,22 @@ function updateNavbar() {
         ? 'Admin'
         : 'Client';
 
-    nav.innerHTML =
-      '<a href="/" class="navbar-brand">Marketplace</a>' +
-      '<div class="navbar-menu">' +
+    var dashUrl = '/dashboard/' + (user.role === 'provider' ? 'executor' : 'client');
+
+    menu.innerHTML =
       '<a href="/catalog">Catalog</a>' +
-      '<a href="/dashboard/' +
-      (user.role === 'provider' ? 'executor' : 'client') +
-      '">Dashboard</a>' +
-      '<div class="navbar-user">' +
-      '<div>' +
-      '<div class="user-email">' +
-      escapeHtml(user.email) +
-      '</div>' +
-      '<div class="user-role">' +
-      roleLabel +
-      '</div>' +
-      '</div>' +
-      '<a href="#" class="btn btn-outline btn-sm" onclick="handleLogout(event)">Logout</a>' +
-      '</div>' +
-      '</div>';
+      '<a href="' + dashUrl + '">Dashboard</a>';
+
+    emailEl.textContent = user.email;
+    roleEl.textContent = roleLabel;
+    userSection.classList.remove('hidden');
+
+    document.getElementById('logout-btn').onclick = handleLogout;
   } else {
-    nav.innerHTML =
-      '<a href="/" class="navbar-brand">Marketplace</a>' +
-      '<div class="navbar-menu">' +
-      '<a href="/catalog">Catalog</a>' +
+    menu.innerHTML =
       '<a href="/login">Login</a>' +
-      '</div>';
+      '<a href="/register">Register</a>';
+    userSection.classList.add('hidden');
   }
 }
 

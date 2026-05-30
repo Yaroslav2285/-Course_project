@@ -11,15 +11,37 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛒</text></svg>">
 </head>
 <body>
-  <nav class="navbar" id="navbar"></nav>
+  <nav class="navbar" id="navbar">
+    <a href="/" class="navbar-brand">Marketplace</a>
+    <div class="navbar-menu" id="navbar-menu">
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    </div>
+    <div class="navbar-user hidden" id="navbar-user">
+      <div>
+        <div class="user-email" id="user-email"></div>
+        <div class="user-role" id="user-role"></div>
+      </div>
+      <a href="#" class="btn btn-outline btn-sm" id="logout-btn">Logout</a>
+    </div>
+  </nav>
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 Service Marketplace. All rights reserved.</p>
+    </div>
+  </footer>
   <div id="toast-container" class="toast-container"></div>
 
   <script src="/api/static/js/api.js"></script>
   <script src="/api/static/js/utils.js"></script>
   <script src="/api/static/js/auth.js"></script>
+  <script>
+    // Run navbar update immediately after auth.js loads
+    if (typeof updateNavbar === 'function') updateNavbar();
+  </script>
   <script src="/api/static/js/app.js"></script>
   {% block scripts %}{% endblock %}
 </body>
