@@ -81,3 +81,20 @@ function renderEscrowBadge(status) {
   var cls = status.toLowerCase().replace(/_/g, '-');
   return '<span class="badge badge-' + cls + '">' + escapeHtml(status) + '</span>';
 }
+
+// === Format price ===
+function formatPrice(p) { return '$' + parseFloat(p).toFixed(2); }
+
+// === Format date ===
+function formatDate(d) {
+  if (!d) return '';
+  var dt = new Date(d);
+  return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// === Status badge ===
+function statusBadge(status) {
+  if (!status) return '';
+  var cls = status === 'in_progress' ? 'in_progress' : status;
+  return '<span class="order-badge status-' + cls + '">' + status.replace(/_/g, ' ') + '</span>';
+}

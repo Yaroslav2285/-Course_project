@@ -44,6 +44,7 @@ async function apiFetch(path, options = {}) {
   const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
+    'X-Request-ID': crypto.randomUUID(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
