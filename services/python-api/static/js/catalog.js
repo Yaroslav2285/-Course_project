@@ -55,14 +55,11 @@ async function loadServices() {
 function applyClientFilters() {
   var filtered = allServices.slice();
 
-  // Search filter
+  // Search filter — by product title only
   var search = filterState.search.trim().toLowerCase();
   if (search) {
     filtered = filtered.filter(function (s) {
-      return (
-        (s.title && s.title.toLowerCase().indexOf(search) !== -1) ||
-        (s.description && s.description.toLowerCase().indexOf(search) !== -1)
-      );
+      return s.title && s.title.toLowerCase().indexOf(search) !== -1;
     });
   }
 
