@@ -1,0 +1,435 @@
+/* LR #6: Web/DB — Dashboard & Orders styles */
+/* LR #12: AI Integration — status badges, skeleton, action buttons */
+
+/* ===== Status badges (escrow & order) ===== */
+.status-created {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.status-pending {
+  background: var(--warning-light);
+  color: #92400E;
+}
+.status-funded {
+  background: var(--info-light);
+  color: #1E40AF;
+}
+.status-in_progress {
+  background: #FFF7ED;
+  color: #9A3412;
+}
+.status-completed {
+  background: #ECFDF5;
+  color: #065F46;
+}
+.status-released {
+  background: var(--success-light);
+  color: #065F46;
+}
+.status-disputed {
+  background: #FCE7F3;
+  color: #9D174D;
+}
+.status-resolved {
+  background: #F3E8FF;
+  color: #6B21A8;
+}
+.status-cancelled {
+  background: var(--danger-light);
+  color: #991B1B;
+}
+.status-archived {
+  background: var(--gray-100);
+  color: var(--gray-400);
+}
+
+/* ===== Badge base ===== */
+.order-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ===== Dashboard Layout ===== */
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--gray-200);
+  margin-bottom: 24px;
+}
+
+.dashboard-tab {
+  padding: 10px 24px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.dashboard-tab:hover {
+  color: var(--gray-900);
+}
+
+.dashboard-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.dashboard-tab-content {
+  display: none;
+}
+
+.dashboard-tab-content.active {
+  display: block;
+}
+
+/* ===== Orders table ===== */
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-400);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.orders-table td {
+  padding: 14px 16px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--gray-100);
+  vertical-align: middle;
+}
+
+.orders-table tr:hover td {
+  background: var(--gray-50);
+}
+
+.orders-table .order-service {
+  font-weight: 600;
+  color: var(--gray-900);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orders-table .order-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orders-table .order-date {
+  color: var(--gray-400);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.orders-table .order-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ===== Action buttons ===== */
+.btn-action {
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-action:disabled,
+.btn-action.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-action-pay {
+  background: var(--success);
+  color: var(--white);
+}
+.btn-action-pay:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-action-accept {
+  background: var(--info);
+  color: var(--white);
+}
+.btn-action-accept:hover:not(:disabled) {
+  background: #2563EB;
+}
+
+.btn-action-complete {
+  background: var(--success);
+  color: var(--white);
+}
+.btn-action-complete:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-action-release {
+  background: #059669;
+  color: var(--white);
+}
+.btn-action-release:hover:not(:disabled) {
+  background: #047857;
+}
+
+.btn-action-dispute {
+  background: #DB2777;
+  color: var(--white);
+}
+.btn-action-dispute:hover:not(:disabled) {
+  background: #BE185D;
+}
+
+.btn-action-cancel {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-action-cancel:hover:not(:disabled) {
+  background: var(--danger-light);
+}
+
+/* ===== Skeleton loading ===== */
+.skeleton-row {
+  display: table-row;
+}
+
+.skeleton-cell {
+  padding: 14px 16px;
+}
+
+.skeleton-bar {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-bar.short {
+  width: 40%;
+}
+
+.skeleton-bar.medium {
+  width: 60%;
+}
+
+.skeleton-bar.long {
+  width: 80%;
+}
+
+.skeleton-badge {
+  width: 70px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ===== Empty state ===== */
+.dashboard-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.dashboard-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.dashboard-empty h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--gray-900);
+}
+
+.dashboard-empty p {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  margin-bottom: 20px;
+}
+
+/* ===== Order detail ===== */
+.order-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.order-info-item label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-400);
+  margin-bottom: 4px;
+}
+
+.order-info-item span {
+  font-size: 0.9375rem;
+  color: var(--gray-900);
+}
+
+/* ===== Escrow timeline ===== */
+.escrow-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 24px 0;
+  overflow-x: auto;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 80px;
+  position: relative;
+}
+
+.timeline-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  border: 3px solid var(--white);
+  box-shadow: 0 0 0 2px var(--gray-200);
+  z-index: 1;
+  transition: all 0.3s;
+}
+
+.timeline-step.active .timeline-dot {
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.timeline-step.completed .timeline-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 2px var(--success);
+}
+
+.timeline-step.disputed .timeline-dot {
+  background: #DB2777;
+  box-shadow: 0 0 0 2px #DB2777;
+}
+
+.timeline-label {
+  font-size: 0.6875rem;
+  color: var(--gray-400);
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.timeline-step.active .timeline-label,
+.timeline-step.completed .timeline-label {
+  color: var(--gray-900);
+}
+
+.timeline-step::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: calc(50% + 12px);
+  width: calc(100% - 24px);
+  height: 2px;
+  background: var(--gray-200);
+  z-index: 0;
+}
+
+.timeline-step:last-child::after {
+  display: none;
+}
+
+.timeline-step.completed::after {
+  background: var(--success);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .dashboard-tab {
+    padding: 8px 16px;
+    font-size: 0.8125rem;
+  }
+
+  .orders-table th,
+  .orders-table td {
+    padding: 10px 12px;
+  }
+
+  .orders-table .order-service {
+    max-width: 120px;
+  }
+
+  .order-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .escrow-timeline {
+    gap: 4px;
+  }
+
+  .timeline-step {
+    min-width: 60px;
+  }
+
+  .timeline-label {
+    font-size: 0.625rem;
+  }
+}
