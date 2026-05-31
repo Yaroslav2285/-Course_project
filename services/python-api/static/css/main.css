@@ -745,6 +745,22 @@ tr:hover td {
   max-width: 400px;
 }
 
+.order-modal-service-info {
+  margin-bottom: 16px;
+}
+
+.order-modal-service-info-inner {
+  font-size: 1.0625rem;
+  color: var(--gray-900);
+}
+
+.order-modal-confirm-text {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 8px 0 12px;
+}
+
 .confirm-message {
   font-size: 0.9375rem;
   color: var(--gray-800);

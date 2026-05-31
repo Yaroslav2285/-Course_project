@@ -1,4 +1,4 @@
-// LR #6: Web/DB — Order creation modal (Phase 7.5)
+// LR #6: Web/DB — Order creation modal (Phase 7.6)
 // LR #10: Multi-lang/REST — creates order via API, 422 handling
 // LR #12: AI Integration — validation, spinner, toast, redirect
 // LR #15: Security/UX — focus trap, Escape key, return focus
@@ -39,23 +39,12 @@ function openOrderModal(serviceId, providerId, price, serviceTitle) {
   error.classList.add('hidden');
   info.innerHTML = '<div class="order-modal-service-info-inner"><strong>' + escapeHtml(serviceTitle || 'Product') + '</strong> &mdash; <span class="text-price">$' + parseFloat(price).toFixed(2) + '</span></div>';
 
-  var deadlineInput = document.getElementById('order-deadline');
-  var tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  deadlineInput.min = tomorrow.toISOString().split('T')[0];
-  deadlineInput.value = '';
-
-  document.getElementById('order-notes').value = '';
-  document.getElementById('order-files').value = '';
-  document.getElementById('order-offer-accept').checked = false;
-
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
 
-  var notesInput = document.getElementById('order-notes');
-  notesInput.focus();
+  var submitBtn = document.getElementById('order-modal-submit');
+  if (submitBtn) submitBtn.focus();
 
-  // Focus trap + Escape handler
   var keyHandler = function (e) {
     if (e.key === 'Escape') {
       closeOrderModal();
@@ -79,7 +68,6 @@ function closeOrderModal() {
     delete modal._keyHandler;
   }
 
-  // Return focus to trigger element
   if (_orderModalTrigger && typeof _orderModalTrigger.focus === 'function') {
     _orderModalTrigger.focus();
   }
@@ -94,15 +82,6 @@ async function submitOrderModal() {
   var errorEl = document.getElementById('order-modal-error');
   errorEl.classList.add('hidden');
 
-  var notes = document.getElementById('order-notes').value.trim();
-  var offerAccepted = document.getElementById('order-offer-accept').checked;
-
-  if (!offerAccepted) {
-    errorEl.textContent = 'Please accept the Offer Terms to proceed.';
-    errorEl.classList.remove('hidden');
-    return;
-  }
-
   var submitBtn = document.getElementById('order-modal-submit');
   var submitText = document.getElementById('order-modal-submit-text');
   var submitSpinner = document.getElementById('order-modal-submit-spinner');
@@ -116,18 +95,17 @@ async function submitOrderModal() {
       body: JSON.stringify({
         service_id: state.serviceId,
         seller_id: state.providerId,
-        amount: parseFloat(state.price),
-        notes: notes || ''
+        amount: parseFloat(state.price)
       })
     }, 1);
 
-    showToast('Order created successfully!', 'success');
+    showToast('Order placed successfully!', 'success');
     closeOrderModal();
     setTimeout(function () {
       window.location.href = '/dashboard/client?tab=orders';
     }, 1200);
   } catch (err) {
-    var msg = err.message || 'Failed to create order';
+    var msg = err.message || 'Failed to place order';
     if (err.data && err.data.errors && err.data.errors[0] && err.data.errors[0].detail) {
       msg = err.data.errors[0].detail;
     }
@@ -136,7 +114,6 @@ async function submitOrderModal() {
     submitBtn.disabled = false;
     submitText.textContent = 'Place Order';
     submitSpinner.classList.add('hidden');
-    // Return focus to error
     errorEl.focus();
   }
 }
