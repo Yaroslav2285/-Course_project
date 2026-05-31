@@ -497,8 +497,12 @@ async function saveService() {
       await apiUpdateService(id, { title: title, description: desc || null, price: price, status: status });
       showToast('Service updated', 'success');
     } else {
-      await apiCreateService(title, desc || null, price);
-      showToast('Service created', 'success');
+      var newSvc = await apiCreateService(title, desc || null, price);
+      // If user selected "published", update status after creation
+      if (status === 'published' && newSvc && newSvc.data && newSvc.data.id) {
+        await apiUpdateService(newSvc.data.id, { status: 'published' });
+      }
+      showToast('Service created!', 'success');
     }
     closeServiceModal();
     initMyServices();
