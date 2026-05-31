@@ -42,19 +42,30 @@
 
   <!-- Global error boundary -->
   <script>
-    // LR #15: Security/UX — Global error handler, prevents SPA crash
+    // LR #15: Security/UX — Global error handler with reentry guard
+    var _handlingError = false;
     window.onerror = function (msg, url, line, col, err) {
+      if (_handlingError) return true;
+      _handlingError = true;
       console.error('[Global Error]', msg, 'at', url, 'line', line, err);
-      if (typeof showToast === 'function') {
-        showToast('An unexpected error occurred. Please try again.', 'error');
-      }
+      try {
+        if (typeof showToast === 'function') {
+          showToast('An unexpected error occurred. Please try again.', 'error');
+        }
+      } catch (e) { /* ignore */ }
+      _handlingError = false;
       return true;
     };
     window.addEventListener('unhandledrejection', function (e) {
+      if (_handlingError) return;
+      _handlingError = true;
       console.error('[Unhandled Rejection]', e.reason);
-      if (typeof showToast === 'function') {
-        showToast('An unexpected error occurred. Please try again.', 'error');
-      }
+      try {
+        if (typeof showToast === 'function') {
+          showToast('An unexpected error occurred. Please try again.', 'error');
+        }
+      } catch (err) { /* ignore */ }
+      _handlingError = false;
       e.preventDefault();
     });
   </script>
