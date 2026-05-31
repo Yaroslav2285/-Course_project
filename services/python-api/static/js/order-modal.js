@@ -30,14 +30,54 @@ function focusTrap(modalEl, event) {
   }
 }
 
+function updateOrderTotal() {
+  var state = _orderModalState;
+  if (!state) return;
+  var qtyInput = document.getElementById('order-qty');
+  var totalEl = document.getElementById('order-total-price');
+  var unitPrice = parseFloat(state.price) || 0;
+  var qty = parseInt(qtyInput.value, 10) || 1;
+  if (qty < 1) qty = 1;
+  if (qty > 99) qty = 99;
+  qtyInput.value = qty;
+  totalEl.textContent = '$' + (unitPrice * qty).toFixed(2);
+}
+
+function initQuantityControls() {
+  var decBtn = document.getElementById('order-qty-dec');
+  var incBtn = document.getElementById('order-qty-inc');
+  var qtyInput = document.getElementById('order-qty');
+
+  function onDec() {
+    var val = parseInt(qtyInput.value, 10) || 1;
+    if (val > 1) qtyInput.value = val - 1;
+    updateOrderTotal();
+  }
+
+  function onInc() {
+    var val = parseInt(qtyInput.value, 10) || 1;
+    if (val < 99) qtyInput.value = val + 1;
+    updateOrderTotal();
+  }
+
+  decBtn.addEventListener('click', onDec);
+  incBtn.addEventListener('click', onInc);
+  qtyInput.addEventListener('input', updateOrderTotal);
+}
+
 function openOrderModal(serviceId, providerId, price, serviceTitle) {
   _orderModalTrigger = document.activeElement;
   _orderModalState = { serviceId: serviceId, providerId: providerId, price: price };
   var modal = document.getElementById('order-modal');
-  var info = document.getElementById('order-modal-service');
   var error = document.getElementById('order-modal-error');
   error.classList.add('hidden');
-  info.innerHTML = '<div class="order-modal-service-info-inner"><strong>' + escapeHtml(serviceTitle || 'Product') + '</strong> &mdash; <span class="text-price">$' + parseFloat(price).toFixed(2) + '</span></div>';
+
+  document.getElementById('order-product-title').textContent = escapeHtml(serviceTitle || 'Product');
+  document.getElementById('order-unit-price').textContent = '$' + parseFloat(price).toFixed(2);
+
+  var qtyInput = document.getElementById('order-qty');
+  qtyInput.value = 1;
+  updateOrderTotal();
 
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
@@ -79,6 +119,11 @@ async function submitOrderModal() {
   var state = _orderModalState;
   if (!state) return;
 
+  var qtyInput = document.getElementById('order-qty');
+  var qty = parseInt(qtyInput.value, 10) || 1;
+  if (qty < 1) qty = 1;
+  if (qty > 99) { qty = 99; qtyInput.value = 99; }
+
   var errorEl = document.getElementById('order-modal-error');
   errorEl.classList.add('hidden');
 
@@ -95,7 +140,7 @@ async function submitOrderModal() {
       body: JSON.stringify({
         service_id: state.serviceId,
         seller_id: state.providerId,
-        amount: parseFloat(state.price)
+        amount: parseFloat(state.price) * qty
       })
     }, 1);
 
@@ -116,4 +161,11 @@ async function submitOrderModal() {
     submitSpinner.classList.add('hidden');
     errorEl.focus();
   }
+}
+
+// Init on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initQuantityControls);
+} else {
+  initQuantityControls();
 }

@@ -1,4 +1,4 @@
-<!-- LR #6: Web/DB — Order creation modal (Phase 7.5) -->
+<!-- LR #6: Web/DB — Order creation modal (Phase 7.6) -->
 <!-- LR #10: Multi-lang/REST — validation, loading spinner, error display -->
 <!-- LR #15: Security/UX — role="dialog", aria-modal, focus trap, keyboard nav -->
 <div id="order-modal"
@@ -9,10 +9,36 @@
      aria-describedby="order-modal-desc"
      onclick="if(event.target===this)closeOrderModal()"
      tabindex="-1">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal order-modal-content">
     <h3 id="order-modal-desc">Place Order</h3>
     <div id="order-modal-service" class="order-modal-service-info"></div>
-    <p class="order-modal-confirm-text">You are about to purchase this product. Your payment will be held in escrow until the order is completed.</p>
+
+    <div class="order-summary-card">
+      <div id="order-modal-product" class="order-product-detail">
+        <span class="order-product-label">Product</span>
+        <span class="order-product-title" id="order-product-title"></span>
+      </div>
+      <div class="order-product-detail">
+        <span class="order-product-label">Unit Price</span>
+        <span class="order-product-unit-price" id="order-unit-price"></span>
+      </div>
+    </div>
+
+    <div class="order-quantity-row">
+      <label for="order-qty" class="order-qty-label">Quantity</label>
+      <div class="order-qty-controls">
+        <button type="button" class="btn-qty" id="order-qty-dec" aria-label="Decrease quantity">−</button>
+        <input type="number" id="order-qty" class="form-control order-qty-input" value="1" min="1" max="99" aria-label="Quantity">
+        <button type="button" class="btn-qty" id="order-qty-inc" aria-label="Increase quantity">+</button>
+      </div>
+    </div>
+
+    <div class="order-total-row">
+      <span class="order-total-label">Total</span>
+      <span class="order-total-price" id="order-total-price">$0.00</span>
+    </div>
+
+    <p class="order-modal-confirm-text">Your payment will be held in escrow until the order is completed.</p>
     <div id="order-modal-error" class="alert alert-error hidden" role="alert"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeOrderModal()" aria-label="Cancel order">Cancel</button>
