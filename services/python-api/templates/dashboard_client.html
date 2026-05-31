@@ -1,23 +1,43 @@
-<!-- LR #6: Web/DB — Client dashboard with orders list -->
+<!-- LR #6: Web/DB — Client dashboard with escrow order management -->
+<!-- LR #12: AI Integration — role-based actions, escrow state machine -->
 {% extends "base.html" %}
-{% block title %}Client Dashboard — Service Marketplace{% endblock %}
+{% block title %}My Orders — Service Marketplace{% endblock %}
 {% block content %}
-<h1 class="mb-4">Client Dashboard</h1>
+<div class="dashboard-header">
+  <h1>My Orders</h1>
+</div>
 <div id="alert-container"></div>
 
-<div class="card mb-4">
-  <div class="card-header flex-between">
-    <span>My Orders <span id="orders-count" class="text-secondary"></span></span>
-  </div>
-  <div id="orders-content">
+<div class="card">
+  <div id="orders-loading">
     <div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>
   </div>
-</div>
-
-<div class="flex gap-2">
-  <a href="/catalog" class="btn btn-primary">Browse Services</a>
+  <div id="orders-empty" class="dashboard-empty" style="display:none;">
+    <div class="dashboard-empty-icon">📋</div>
+    <h3>No orders yet</h3>
+    <p>Browse services to place your first order.</p>
+    <a href="/catalog" class="btn btn-primary">Browse Services</a>
+  </div>
+  <div id="orders-error" style="display:none;"></div>
+  <div id="orders-table-wrapper" style="display:none;">
+    <div class="table-wrapper">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="/api/static/js/dashboard.js"></script>
+<script src="/api/static/js/dashboard.js?v=2"></script>
+<script>initClientDashboard();</script>
 {% endblock %}

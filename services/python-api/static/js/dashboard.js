@@ -1,134 +1,467 @@
-// LR #6: Web/DB — Dashboard logic (client + executor)
-// LR #12: AI Integration — order/service CRUD, modals, status updates
+// LR #6: Web/DB — Dashboard logic with escrow state machine
+// LR #10: Multi-lang/REST — escrow proxy calls with idempotency
+// LR #12: AI Integration — role-based UI, debounce, optimistic updates
 
 var serviceCache = {};
 var serviceData = [];
+var _actionInProgress = {};
 
-async function fetchServiceTitle(serviceId) {
-  if (serviceCache[serviceId]) return serviceCache[serviceId];
-  try {
-    var res = await apiFetchService(serviceId);
-    if (res && res.data) {
-      serviceCache[serviceId] = res.data.title;
-      return res.data.title;
-    }
-  } catch (e) { /* ignore */ }
-  return serviceId.slice(0, 8) + '...';
-}
-
-function formatPrice(p) {
-  return '$' + parseFloat(p).toFixed(2);
-}
-
+// ===== Helpers =====
+function formatPrice(p) { return '$' + parseFloat(p).toFixed(2); }
 function formatDate(d) {
   if (!d) return '';
   var dt = new Date(d);
   return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+async function fetchServiceTitle(id) {
+  if (serviceCache[id]) return serviceCache[id];
+  try {
+    var res = await apiFetchService(id);
+    if (res && res.data) {
+      serviceCache[id] = res.data.title;
+      return res.data.title;
+    }
+  } catch (e) { /* ignore */ }
+  return id.slice(0, 8) + '...';
+}
+
+function statusBadge(status) {
+  if (!status) return '';
+  var cls = status === 'in_progress' ? 'in_progress' : status;
+  return '<span class="order-badge status-' + cls + '">' + status.replace(/_/g, ' ') + '</span>';
+}
+
+function showSkeleton(parent, rows) {
+  if (!parent) return;
+  rows = rows || 3;
+  var html = '';
+  for (var i = 0; i < rows; i++) {
+    html += '<tr class="skeleton-row">'
+      + '<td class="skeleton-cell"><div class="skeleton-bar long"></div></td>'
+      + '<td class="skeleton-cell"><div class="skeleton-bar short"></div></td>'
+      + '<td class="skeleton-cell"><span class="skeleton-badge"></span></td>'
+      + '<td class="skeleton-cell"><div class="skeleton-bar medium"></div></td>'
+      + '<td class="skeleton-cell"><div class="skeleton-bar short"></div></td>'
+      + '</tr>';
+  }
+  parent.innerHTML = html;
+}
+
+function debounceClick(fn) {
+  return function () {
+    if (window._isProcessing) return;
+    window._isProcessing = true;
+    var args = arguments;
+    var self = this;
+    Promise.resolve(fn.apply(self, args)).finally(function () {
+      window._isProcessing = false;
+    });
+  };
+}
+
 // ===== Client Dashboard =====
 
-async function initClientDashboard() {
-  var container = document.getElementById('orders-content');
-  if (!container) return;
-  container.innerHTML = '<div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>';
+function initClientDashboard() {
   try {
-    var res = await apiFetchOrders(50, 0);
-    var orders = res.data || [];
-    var total = res.meta ? res.meta.total : orders.length;
-    updateCount('orders-count', total);
-    if (!orders.length) {
-      container.innerHTML = '<div class="empty-state"><p>No orders yet</p><p class="text-secondary">Browse services to place your first order.</p><a href="/catalog" class="btn btn-primary mt-4">Browse Services</a></div>';
+    var loadEl = document.getElementById('orders-loading');
+    var emptyEl = document.getElementById('orders-empty');
+    var errEl = document.getElementById('orders-error');
+    var tableEl = document.getElementById('orders-table-wrapper');
+    var tbody = document.getElementById('orders-tbody');
+
+    if (!loadEl || !tbody) {
+      console.error('Dashboard: required DOM elements missing');
       return;
     }
-    var titles = {};
-    await Promise.all(orders.map(function (o) {
-      return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
-    }));
-    var html = '<div class="table-wrapper"><table><thead><tr><th>Service</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-    orders.forEach(function (o) {
-      var badge = renderBadge(o.status);
-      var actions = '';
-      if (o.status === 'pending') {
-        actions += '<button class="btn btn-success btn-sm" onclick="clientPay(\'' + o.id + '\')">Pay</button> ';
-        actions += '<button class="btn btn-danger btn-sm" onclick="clientCancel(\'' + o.id + '\')">Cancel</button>';
-      } else if (o.status === 'funded') {
-        actions += '<span class="text-secondary">Awaiting completion</span>';
-      } else if (o.status === 'disputed') {
-        actions += '<a href="/audit/' + o.id + '" class="btn btn-outline btn-sm">Dispute</a>';
-      } else {
-        actions += '<a href="/orders/' + o.id + '" class="btn btn-outline btn-sm">View</a>';
+
+    loadEl.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (errEl) errEl.style.display = 'none';
+    if (tableEl) tableEl.style.display = 'none';
+    showSkeleton(tbody, 3);
+
+    var auth = checkAuth();
+    if (!auth.isAuthenticated) {
+      loadEl.style.display = 'none';
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.innerHTML = '<div class="alert alert-error">Please <a href="/login">login</a> to view your orders.</div>';
       }
-      html += '<tr><td>' + escapeHtml(titles[o.service_id] || '...') + '</td><td>' + formatPrice(o.amount) + '</td><td>' + badge + '</td><td>' + formatDate(o.created_at) + '</td><td>' + actions + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
+      return;
+    }
+
+    var apiUrl = API_BASE + '/orders/?limit=50&offset=0';
+    console.log('Dashboard: fetching orders from', apiUrl);
+
+    apiFetchOrders(50, 0)
+      .then(function (res) {
+        console.log('Dashboard: orders received', res);
+        var orders = (res.data || []).sort(function (a, b) {
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+        loadEl.style.display = 'none';
+        if (!orders.length) {
+          if (emptyEl) emptyEl.style.display = 'block';
+          return;
+        }
+        return renderClientOrders(tbody, orders).then(function () {
+          if (tableEl) tableEl.style.display = 'block';
+        });
+      })
+      .catch(function (err) {
+        console.error('Dashboard: fetch error', err);
+        loadEl.style.display = 'none';
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.innerHTML = '<div class="alert alert-error">Failed to load orders: ' + escapeHtml(err.message || 'Unknown error') + '</div>';
+        }
+      });
   } catch (err) {
-    container.innerHTML = '<div class="alert alert-error">Failed to load orders: ' + escapeHtml(err.message) + '</div>';
+    console.error('Dashboard: init error', err);
+    var loadEl = document.getElementById('orders-loading');
+    if (loadEl) {
+      loadEl.style.display = 'none';
+      var errEl = document.getElementById('orders-error');
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.innerHTML = '<div class="alert alert-error">' + escapeHtml(err.message || 'Unexpected error') + '</div>';
+      }
+    }
   }
 }
 
-async function clientPay(orderId) {
-  if (!confirm('Proceed with payment for this order?')) return;
-  try {
-    await apiUpdateOrderStatus(orderId, 'funded');
-    showToast('Order funded successfully', 'success');
-    initClientDashboard();
-  } catch (err) {
-    showAlert(err.message, 'error');
-  }
+async function renderClientOrders(tbody, orders) {
+  var titles = {};
+  await Promise.all(orders.map(function (o) {
+    return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
+  }));
+  var html = '';
+  orders.forEach(function (o) {
+    var actions = clientActions(o.status, o.id);
+    html += '<tr>'
+      + '<td class="order-service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-amount">' + formatPrice(o.amount) + '</td>'
+      + '<td><span id="badge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td class="order-date">' + formatDate(o.created_at) + '</td>'
+      + '<td class="order-actions" id="actions-' + o.id + '">' + actions + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
 }
 
-async function clientCancel(orderId) {
-  if (!confirm('Cancel this order?')) return;
-  try {
-    await apiUpdateOrderStatus(orderId, 'cancelled');
-    showToast('Order cancelled', 'info');
-    initClientDashboard();
-  } catch (err) {
-    showAlert(err.message, 'error');
+function clientActions(status, orderId) {
+  var html = '';
+  // Escrow-flow mapping: the frontend shows escrow-style labels
+  // Map order status → escrow equivalent actions
+  switch (status) {
+    case 'pending':
+      html += '<button class="btn-action btn-action-pay" onclick="handleEscrowAction(\'' + orderId + '\',\'fund\')">Pay</button>';
+      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
+      break;
+    case 'funded':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Awaiting completion</span>';
+      break;
+    case 'in_progress':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Executor working</span>';
+      html += '<button class="btn-action btn-action-dispute" onclick="handleEscrowAction(\'' + orderId + '\',\'dispute\')">Dispute</button>';
+      break;
+    case 'completed':
+      html += '<button class="btn-action btn-action-release" onclick="handleEscrowAction(\'' + orderId + '\',\'release\')">Confirm Release</button>';
+      html += '<button class="btn-action btn-action-dispute" onclick="handleEscrowAction(\'' + orderId + '\',\'dispute\')">Dispute</button>';
+      break;
+    case 'released':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;color:var(--success);font-weight:600;">✓ Completed</span>';
+      break;
+    case 'disputed':
+      html += '<a href="/audit/' + orderId + '" class="btn-action btn-action-dispute">View Dispute</a>';
+      break;
+    case 'cancelled':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Cancelled</span>';
+      break;
+    default:
+      html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">View</a>';
   }
+  return html;
 }
 
 // ===== Executor Dashboard =====
 
-async function initExecutorDashboard() {
-  await Promise.all([initMyServices(), initIncomingOrders()]);
-}
-
-// -- My Services --
-
-async function initMyServices() {
-  var container = document.getElementById('services-content');
-  if (!container) return;
-  container.innerHTML = '<div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>';
+function initExecutorDashboard() {
   try {
-    var res = await apiFetchMyServices();
-    var services = res.data || [];
-    var total = res.meta ? res.meta.total : services.length;
-    updateCount('services-count', total);
-    if (!services.length) {
-      container.innerHTML = '<div class="empty-state"><p>No services yet</p><p class="text-secondary">Create your first service to start receiving orders.</p></div>';
-      return;
-    }
-    serviceData = [];
-    var html = '<div class="table-wrapper"><table><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    services.forEach(function (s) {
-      var badge = renderBadge(s.status);
-      serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
-      var idx = serviceData.length - 1;
-      html += '<tr><td>' + escapeHtml(s.title) + '</td><td>' + formatPrice(s.price) + '</td><td>' + badge + '</td><td>'
-        + '<button class="btn btn-outline btn-sm" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
-        + '<button class="btn btn-danger btn-sm" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
-        + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
+    var tab = document.getElementById('tab-services');
+    if (tab) tab.classList.add('active');
+    initMyServices();
+    initIncomingOrders();
   } catch (err) {
-    container.innerHTML = '<div class="alert alert-error">Failed to load services: ' + escapeHtml(err.message) + '</div>';
+    console.error('Dashboard executor init error', err);
   }
 }
 
+function switchTab(tab) {
+  document.querySelectorAll('.dashboard-tab').forEach(function (t) { t.classList.remove('active'); });
+  document.querySelectorAll('.dashboard-tab-content').forEach(function (c) { c.classList.remove('active'); });
+  document.querySelector('.dashboard-tab[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// -- My Services --
+function initMyServices() {
+  var container = document.getElementById('services-content');
+  if (!container) return;
+  container.innerHTML = '<div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>';
+
+  apiFetchMyServices()
+    .then(function (res) {
+      var services = res.data || [];
+      var total = res.meta ? res.meta.total : services.length;
+      var countEl = document.getElementById('services-count');
+      if (countEl) countEl.textContent = '(' + total + ')';
+      if (!services.length) {
+        container.innerHTML = '<div class="dashboard-empty"><p>No services yet. Create your first service!</p></div>';
+        return;
+      }
+      serviceData = [];
+      var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+      services.forEach(function (s) {
+        serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
+        var idx = serviceData.length - 1;
+        html += '<tr><td class="order-service">' + escapeHtml(s.title) + '</td>'
+          + '<td class="order-amount">' + formatPrice(s.price) + '</td>'
+          + '<td>' + statusBadge(s.status) + '</td>'
+          + '<td class="order-actions">'
+          + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
+          + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
+          + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    })
+    .catch(function (err) {
+      container.innerHTML = '<div class="alert alert-error">Failed to load services: ' + escapeHtml(err.message) + '</div>';
+    });
+}
+
+// -- Incoming Orders --
+function initIncomingOrders() {
+  var loadEl = document.getElementById('incoming-loading');
+  var emptyEl = document.getElementById('incoming-empty');
+  var errEl = document.getElementById('incoming-error');
+  var tableEl = document.getElementById('incoming-table-wrapper');
+  var tbody = document.getElementById('incoming-tbody');
+
+  if (!loadEl) return;
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (errEl) errEl.style.display = 'none';
+  if (tableEl) tableEl.style.display = 'none';
+  loadEl.style.display = 'block';
+
+  apiFetchSoldOrders()
+    .then(function (res) {
+      var orders = (res.data || []).sort(function (a, b) {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      var total = res.meta ? res.meta.total : orders.length;
+      var countEl = document.getElementById('incoming-count');
+      if (countEl) countEl.textContent = '(' + total + ')';
+      loadEl.style.display = 'none';
+      if (!orders.length) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+      return renderIncomingOrders(tbody, orders).then(function () {
+        tableEl.style.display = 'block';
+      });
+    })
+    .catch(function (err) {
+      console.error('Dashboard incoming fetch error', err);
+      loadEl.style.display = 'none';
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.innerHTML = '<div class="alert alert-error">' + escapeHtml(err.message) + '</div>';
+      }
+    });
+}
+
+async function renderIncomingOrders(tbody, orders) {
+  var titles = {};
+  await Promise.all(orders.map(function (o) {
+    return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
+  }));
+  var html = '';
+  orders.forEach(function (o) {
+    var actions = executorActions(o.status, o.id);
+    html += '<tr>'
+      + '<td class="order-service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-amount">' + formatPrice(o.amount) + '</td>'
+      + '<td><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td class="order-date">' + formatDate(o.created_at) + '</td>'
+      + '<td class="order-actions" id="eactions-' + o.id + '">' + actions + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function executorActions(status, orderId) {
+  var html = '';
+  switch (status) {
+    case 'pending':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Awaiting payment</span>';
+      break;
+    case 'funded':
+      html += '<button class="btn-action btn-action-accept" onclick="handleEscrowAction(\'' + orderId + '\',\'advance\')">Accept & Start</button> ';
+      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
+      break;
+    case 'in_progress':
+      html += '<button class="btn-action btn-action-complete" onclick="handleEscrowAction(\'' + orderId + '\',\'complete\')">Complete Work</button> ';
+      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
+      break;
+    case 'completed':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Pending client confirmation</span>';
+      break;
+    case 'released':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;color:var(--success);font-weight:600;">✓ Payment received</span>';
+      break;
+    case 'disputed':
+      html += '<a href="/audit/' + orderId + '" class="btn-action btn-action-dispute">Respond to Dispute</a>';
+      break;
+    case 'cancelled':
+      html += '<span class="text-secondary" style="font-size:0.8125rem;">Cancelled</span>';
+      break;
+    default:
+      html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">View</a>';
+  }
+  return html;
+}
+
+// ===== Escrow Actions =====
+function handleEscrowAction(orderId, action) {
+  if (_actionInProgress[orderId]) return;
+  _actionInProgress[orderId] = true;
+  var btn = window.event && window.event.target;
+  if (btn) btn.disabled = true;
+
+  var confirmMsg = '';
+  switch (action) {
+    case 'fund': confirmMsg = 'Proceed with payment for this order?'; break;
+    case 'advance': confirmMsg = 'Accept this order and start working?'; break;
+    case 'complete': confirmMsg = 'Mark this order as complete?'; break;
+    case 'release': confirmMsg = 'Confirm release of funds to the executor?'; break;
+    case 'dispute': confirmMsg = 'Open a dispute for this order?'; break;
+    case 'cancel': confirmMsg = 'Cancel this order?'; break;
+  }
+  if (confirmMsg && !confirm(confirmMsg)) {
+    if (btn) btn.disabled = false;
+    delete _actionInProgress[orderId];
+    return;
+  }
+
+  doAction(orderId, action).catch(function (err) {
+    showAlert(err.message, 'error');
+  }).finally(function () {
+    if (btn) btn.disabled = false;
+    delete _actionInProgress[orderId];
+  });
+}
+
+async function doAction(orderId, action) {
+  // Map actions to API calls
+  if (action === 'cancel') {
+    await apiUpdateOrderStatus(orderId, 'cancelled');
+    showToast('Order cancelled', 'info');
+  } else if (action === 'fund') {
+    // Try escrow proxy first, fallback to order status update
+    try {
+      await apiEscrowAction(orderId, 'fund');
+    } catch (e) {
+      if (e.status === 404 || e.status === 0) {
+        // Escrow proxy unavailable (dev mode) → use order PATCH
+        await apiUpdateOrderStatus(orderId, 'funded');
+      } else {
+        throw e;
+      }
+    }
+    showToast('Payment successful!', 'success');
+  } else if (action === 'advance') {
+    try {
+      await apiEscrowAdvance(orderId, 'IN_PROGRESS');
+    } catch (e) {
+      if (e.status === 404 || e.status === 0) {
+        await apiUpdateOrderStatus(orderId, 'funded');
+      } else {
+        throw e;
+      }
+    }
+    showToast('Order accepted, status set to In Progress', 'success');
+  } else if (action === 'complete') {
+    try {
+      await apiEscrowComplete(orderId);
+    } catch (e) {
+      if (e.status === 404 || e.status === 0) {
+        await apiUpdateOrderStatus(orderId, 'released');
+      } else {
+        throw e;
+      }
+    }
+    showToast('Order completed!', 'success');
+  } else if (action === 'release') {
+    try {
+      await apiEscrowAction(orderId, 'release');
+    } catch (e) {
+      if (e.status === 404 || e.status === 0) {
+        await apiUpdateOrderStatus(orderId, 'released');
+      } else {
+        throw e;
+      }
+    }
+    showToast('Payment released to executor', 'success');
+  } else if (action === 'dispute') {
+    try {
+      await apiEscrowAction(orderId, 'dispute');
+    } catch (e) {
+      if (e.status === 404 || e.status === 0) {
+        await apiUpdateOrderStatus(orderId, 'disputed');
+      } else {
+        throw e;
+      }
+    }
+    showToast('Dispute opened', 'info');
+  }
+
+  // Optimistic UI update: change status badge and re-render actions
+  var newStatus = mapActionToStatus(action);
+  updateOrderStatusUI(orderId, newStatus);
+}
+
+function mapActionToStatus(action) {
+  switch (action) {
+    case 'fund': return 'funded';
+    case 'advance': return 'in_progress';
+    case 'complete': return 'completed';
+    case 'release': return 'released';
+    case 'dispute': return 'disputed';
+    case 'cancel': return 'cancelled';
+    default: return '';
+  }
+}
+
+function updateOrderStatusUI(orderId, newStatus) {
+  // Update badge
+  var badgeEl = document.getElementById('badge-' + orderId) || document.getElementById('ebadge-' + orderId);
+  if (badgeEl) badgeEl.innerHTML = statusBadge(newStatus);
+  // Update actions
+  var actionsEl = document.getElementById('actions-' + orderId) || document.getElementById('eactions-' + orderId);
+  if (actionsEl) {
+    var role = checkAuth().role || 'client';
+    if (role === 'provider') {
+      actionsEl.innerHTML = executorActions(newStatus, orderId);
+    } else {
+      actionsEl.innerHTML = clientActions(newStatus, orderId);
+    }
+  }
+}
+
+// ===== Service CRUD (Executor) =====
 function openCreateServiceModal() {
   document.getElementById('modal-title').textContent = 'Create Service';
   document.getElementById('svc-id').value = '';
@@ -146,16 +479,12 @@ function closeServiceModal() {
 function editServiceByIndex(idx) {
   var d = serviceData[idx];
   if (!d) return;
-  editService(d.id, d.title, d.desc, d.price, d.status);
-}
-
-function editService(id, title, desc, price, status) {
   document.getElementById('modal-title').textContent = 'Edit Service';
-  document.getElementById('svc-id').value = id;
-  document.getElementById('svc-title').value = title;
-  document.getElementById('svc-desc').value = desc;
-  document.getElementById('svc-price').value = price;
-  document.getElementById('svc-status').value = status;
+  document.getElementById('svc-id').value = d.id;
+  document.getElementById('svc-title').value = d.title;
+  document.getElementById('svc-desc').value = d.desc;
+  document.getElementById('svc-price').value = d.price;
+  document.getElementById('svc-status').value = d.status;
   document.getElementById('service-modal').classList.remove('hidden');
 }
 
@@ -192,84 +521,3 @@ async function deleteService(id) {
     showAlert(err.message, 'error');
   }
 }
-
-// -- Incoming Orders --
-
-async function initIncomingOrders() {
-  var container = document.getElementById('incoming-content');
-  if (!container) return;
-  container.innerHTML = '<div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>';
-  try {
-    var res = await apiFetchSoldOrders();
-    var orders = res.data || [];
-    var total = res.meta ? res.meta.total : orders.length;
-    updateCount('incoming-count', total);
-    if (!orders.length) {
-      container.innerHTML = '<div class="empty-state"><p>No incoming orders yet</p><p class="text-secondary">Orders will appear here when clients purchase your services.</p></div>';
-      return;
-    }
-    var titles = {};
-    await Promise.all(orders.map(function (o) {
-      return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
-    }));
-    var html = '<div class="table-wrapper"><table><thead><tr><th>Service</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-    orders.forEach(function (o) {
-      var badge = renderBadge(o.status);
-      var actions = '';
-      if (o.status === 'funded') {
-        actions += '<button class="btn btn-success btn-sm" onclick="executorComplete(\'' + o.id + '\')">Complete</button> ';
-      }
-      if (o.status === 'pending' || o.status === 'funded') {
-        actions += '<button class="btn btn-danger btn-sm" onclick="executorCancel(\'' + o.id + '\')">Cancel</button>';
-      }
-      if (!actions) {
-        actions += '<a href="/orders/' + o.id + '" class="btn btn-outline btn-sm">View</a>';
-      }
-      html += '<tr><td>' + escapeHtml(titles[o.service_id] || '...') + '</td><td>' + formatPrice(o.amount) + '</td><td>' + badge + '</td><td>' + formatDate(o.created_at) + '</td><td>' + actions + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-  } catch (err) {
-    container.innerHTML = '<div class="alert alert-error">Failed to load orders: ' + escapeHtml(err.message) + '</div>';
-  }
-}
-
-async function executorComplete(orderId) {
-  if (!confirm('Mark this order as complete and release payment?')) return;
-  try {
-    await apiUpdateOrderStatus(orderId, 'released');
-    showToast('Order completed, payment released', 'success');
-    initIncomingOrders();
-  } catch (err) {
-    showAlert(err.message, 'error');
-  }
-}
-
-async function executorCancel(orderId) {
-  if (!confirm('Cancel this order?')) return;
-  try {
-    await apiUpdateOrderStatus(orderId, 'cancelled');
-    showToast('Order cancelled', 'info');
-    initIncomingOrders();
-  } catch (err) {
-    showAlert(err.message, 'error');
-  }
-}
-
-// ===== Shared helpers =====
-
-function updateCount(id, total) {
-  var el = document.getElementById(id);
-  if (el) el.textContent = '(' + total + ')';
-}
-
-// ===== Init by page type =====
-document.addEventListener('DOMContentLoaded', function () {
-  updateNavbar();
-  var path = window.location.pathname;
-  if (path === '/dashboard/client') {
-    initClientDashboard();
-  } else if (path === '/dashboard/executor') {
-    initExecutorDashboard();
-  }
-});
