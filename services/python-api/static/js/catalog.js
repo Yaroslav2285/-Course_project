@@ -163,6 +163,8 @@ function renderCards(services) {
         s.provider_id +
         '" data-price="' +
         s.price +
+        '" data-service-title="' +
+        escapeHtml(s.title).replace(/"/g, '&quot;') +
         '">Order</button>';
     } else if (role === 'provider') {
       orderBtn =
@@ -211,13 +213,14 @@ function renderCards(services) {
       var serviceId = btn.getAttribute('data-service-id');
       var providerId = btn.getAttribute('data-provider-id');
       var price = btn.getAttribute('data-price');
-      handleOrderClick(serviceId, providerId, price);
+      var serviceTitle = btn.getAttribute('data-service-title');
+      handleOrderClick(serviceId, providerId, price, serviceTitle);
     });
   });
 }
 
-// === Order button handler ===
-function handleOrderClick(serviceId, providerId, price) {
+// === Order button handler (opens modal) ===
+function handleOrderClick(serviceId, providerId, price, serviceTitle) {
   var auth = checkAuth();
   if (!auth.isAuthenticated) {
     window.location.href = '/register';
@@ -234,17 +237,7 @@ function handleOrderClick(serviceId, providerId, price) {
     return;
   }
 
-  // Simple order creation via API
-  apiCreateOrder(serviceId, providerId, amount, '')
-    .then(function () {
-      showToast('Order created successfully!', 'success');
-      setTimeout(function () {
-        window.location.href = '/orders';
-      }, 1000);
-    })
-    .catch(function (err) {
-      showToast(err.message || 'Failed to create order', 'error');
-    });
+  openOrderModal(serviceId, providerId, price, serviceTitle);
 }
 
 // === Render pagination ===

@@ -1,0 +1,35 @@
+<!-- LR #6: Web/DB — Order creation modal (Phase 7.4) -->
+<!-- LR #12: AI Integration — validation, loading spinner, error display -->
+<div id="order-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeOrderModal()">
+  <div class="modal" style="max-width:520px;">
+    <h3>Place Order</h3>
+    <div id="order-modal-service" class="order-modal-service-info"></div>
+    <div class="form-group">
+      <label for="order-notes">Order Description</label>
+      <textarea id="order-notes" class="form-control" placeholder="Describe what you need done..." rows="3" maxlength="2000"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="order-deadline">Deadline (optional)</label>
+      <input type="date" id="order-deadline" class="form-control" min="">
+    </div>
+    <div class="form-group">
+      <label for="order-files">Attachments (optional)</label>
+      <input type="file" id="order-files" class="form-control" multiple accept=".pdf,.doc,.docx,.zip,.png,.jpg,.jpeg">
+      <span class="form-hint">Max 5 files. PDF, DOC, ZIP, images.</span>
+    </div>
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="order-offer-accept">
+        <span>I agree to the <a href="#" onclick="event.preventDefault();showToast('Offer terms: Escrow service protects both parties. Payment released only after mutual confirmation.','info')">Offer Terms</a></span>
+      </label>
+    </div>
+    <div id="order-modal-error" class="alert alert-error hidden"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeOrderModal()">Cancel</button>
+      <button class="btn btn-primary" id="order-modal-submit" onclick="submitOrderModal()">
+        <span id="order-modal-submit-text">Place Order</span>
+        <span id="order-modal-submit-spinner" class="spinner hidden" style="width:16px;height:16px;margin:0;"></span>
+      </button>
+    </div>
+  </div>
+</div>
