@@ -61,7 +61,7 @@
 
     <div id="empty-state" class="empty-state hidden" role="status">
       <div class="empty-icon">&#128270;</div>
-      <h3>No services found</h3>
+      <h3>No products found</h3>
       <p>Try adjusting your search or filter criteria.</p>
       <button id="empty-reset" class="btn btn-outline" onclick="resetFilters()">Reset Filters</button>
     </div>
@@ -69,7 +69,7 @@
     <div id="error-state" class="error-state hidden" role="alert">
       <div class="error-icon">&#9888;&#65039;</div>
       <h3>Something went wrong</h3>
-      <p id="error-message">Failed to load services. Please try again.</p>
+      <p id="error-message">Failed to load products. Please try again.</p>
       <button id="error-retry" class="btn btn-primary">Retry</button>
     </div>
 
@@ -80,6 +80,6 @@
 {% include "order-modal.html" %}
 {% endblock %}
 {% block scripts %}
-<script src="/api/static/js/order-modal.js?v=5"></script>
-<script src="/api/static/js/catalog.js?v=5"></script>
+<script src="/api/static/js/order-modal.js?v=6"></script>
+<script src="/api/static/js/catalog.js?v=6"></script>
 {% endblock %}

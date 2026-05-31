@@ -148,7 +148,7 @@ async function renderClientOrders(tbody, orders) {
   orders.forEach(function (o) {
     var actions = clientActions(o.status, o.id);
     html += '<tr>'
-      + '<td class="order-service" data-label="Service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
       + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
       + '<td data-label="Status"><span id="badge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
       + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
@@ -198,7 +198,7 @@ function initMyServices() {
       var countEl = document.getElementById('services-count');
       if (countEl) countEl.textContent = '(' + total + ')';
       if (!services.length) {
-        container.innerHTML = '<div class="dashboard-empty"><p>No services yet. Create your first service!</p></div>';
+        container.innerHTML = '<div class="dashboard-empty"><p>No products yet. Create your first product!</p></div>';
         return;
       }
       serviceData = [];
@@ -218,7 +218,7 @@ function initMyServices() {
       container.innerHTML = html;
     })
     .catch(function (err) {
-      container.innerHTML = '<div class="alert alert-error">Failed to load services: ' + escapeHtml(err.message) + '</div>';
+      container.innerHTML = '<div class="alert alert-error">Failed to load products: ' + escapeHtml(err.message) + '</div>';
     });
 }
 
@@ -272,7 +272,7 @@ async function renderIncomingOrders(tbody, orders) {
   orders.forEach(function (o) {
     var actions = executorActions(o.status, o.id);
     html += '<tr>'
-      + '<td class="order-service" data-label="Service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
       + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
       + '<td data-label="Status"><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
       + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
@@ -424,7 +424,7 @@ function updateOrderStatusUI(orderId, newStatus) {
 // ===== Service CRUD (Executor) =====
 function openCreateServiceModal() {
   _svcModalTrigger = document.activeElement;
-  document.getElementById('modal-title').textContent = 'Create Service';
+  document.getElementById('modal-title').textContent = 'Create Product';
   document.getElementById('svc-id').value = '';
   document.getElementById('svc-title').value = '';
   document.getElementById('svc-desc').value = '';
@@ -464,7 +464,7 @@ function editServiceByIndex(idx) {
   var d = serviceData[idx];
   if (!d) return;
   _svcModalTrigger = document.activeElement;
-  document.getElementById('modal-title').textContent = 'Edit Service';
+  document.getElementById('modal-title').textContent = 'Edit Product';
   document.getElementById('svc-id').value = d.id;
   document.getElementById('svc-title').value = d.title;
   document.getElementById('svc-desc').value = d.desc;
@@ -500,14 +500,14 @@ async function saveService() {
   try {
     if (id) {
       await apiUpdateService(id, { title: title, description: desc || null, price: price, status: status });
-      showToast('Service updated', 'success');
+      showToast('Product updated', 'success');
     } else {
       var newSvc = await apiCreateService(title, desc || null, price);
       // If user selected "published", update status after creation
       if (status === 'published' && newSvc && newSvc.data && newSvc.data.id) {
         await apiUpdateService(newSvc.data.id, { status: 'published' });
       }
-      showToast('Service created!', 'success');
+      showToast('Product created!', 'success');
     }
     closeServiceModal();
     initMyServices();
@@ -518,11 +518,11 @@ async function saveService() {
 }
 
 async function deleteService(id) {
-  var confirmed = await showConfirmDialog('Delete this service permanently?');
+  var confirmed = await showConfirmDialog('Delete this product permanently?');
   if (!confirmed) return;
   try {
     await apiDeleteService(id);
-    showToast('Service deleted', 'info');
+    showToast('Product deleted', 'info');
     initMyServices();
   } catch (err) {
     showAlert(err.message, 'error');

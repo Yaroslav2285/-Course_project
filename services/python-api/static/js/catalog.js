@@ -47,7 +47,7 @@ async function loadServices() {
     if (err.status === 401 || err.status === 403) {
       return;
     }
-    showError(err.message || 'Failed to load services');
+    showError(err.message || 'Failed to load products');
   }
 }
 
@@ -313,7 +313,7 @@ function handleOrderClick(serviceId, providerId, price, serviceTitle) {
 
   var amount = parseFloat(price);
   if (isNaN(amount) || amount <= 0) {
-    showToast('Invalid service price', 'error');
+    showToast('Invalid product price', 'error');
     return;
   }
 
@@ -408,7 +408,7 @@ function showError(msg) {
   emptyState.classList.add('hidden');
   errorState.classList.remove('hidden');
   paginationEl.classList.add('hidden');
-  errorMessage.textContent = msg || 'Failed to load services. Please try again.';
+  errorMessage.textContent = msg || 'Failed to load products. Please try again.';
 }
 
 // === Apply filters from UI ===

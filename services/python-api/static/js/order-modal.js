@@ -37,7 +37,7 @@ function openOrderModal(serviceId, providerId, price, serviceTitle) {
   var info = document.getElementById('order-modal-service');
   var error = document.getElementById('order-modal-error');
   error.classList.add('hidden');
-  info.innerHTML = '<div class="order-modal-service-info-inner"><strong>' + escapeHtml(serviceTitle || 'Service') + '</strong> &mdash; <span class="text-price">$' + parseFloat(price).toFixed(2) + '</span></div>';
+  info.innerHTML = '<div class="order-modal-service-info-inner"><strong>' + escapeHtml(serviceTitle || 'Product') + '</strong> &mdash; <span class="text-price">$' + parseFloat(price).toFixed(2) + '</span></div>';
 
   var deadlineInput = document.getElementById('order-deadline');
   var tomorrow = new Date();
