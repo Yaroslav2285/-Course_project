@@ -164,7 +164,7 @@ function handleLogout(event) {
   clearTokens();
   showToast('You have been logged out', 'info');
   setTimeout(function () {
-    window.location.href = '/login';
+    window.location.href = '/';
   }, 300);
 }
 
