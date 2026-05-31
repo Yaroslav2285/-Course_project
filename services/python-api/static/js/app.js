@@ -8,7 +8,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // Page-specific initialization based on body data attribute or path
   var path = window.location.pathname;
 
-  if (path === '/login') {
+  if (path === '/') {
+    var auth = checkAuth();
+    if (auth.isAuthenticated) {
+      var dest = auth.role === 'provider' ? '/dashboard/executor' : '/dashboard/client';
+      window.location.href = dest;
+      return;
+    }
+  } else if (path === '/login') {
     initLoginPage();
   } else if (path === '/register') {
     initRegisterPage();
