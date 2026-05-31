@@ -1,11 +1,36 @@
-<!-- LR #6: Web/DB — Order detail page (placeholder for Phase 7.4) -->
+<!-- LR #6: Web/DB — Order detail page with escrow panel (Phase 7.4) -->
+<!-- LR #10: Multi-lang/REST — escrow state-machine actions -->
+<!-- LR #12: AI Integration — skeleton, empty, error, optimistic UI -->
 {% extends "base.html" %}
 {% block title %}Order Detail — Service Marketplace{% endblock %}
 {% block content %}
-<h1 class="mb-4">Order Detail</h1>
-<div id="alert-container"></div>
-<div class="card">
-  <p class="text-secondary">Order detail with escrow timeline will be available in the next update.</p>
+<div id="order-detail-loading" class="card" style="padding:40px;">
+  <div class="flex-center"><div class="spinner"></div></div>
 </div>
-<a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+<div id="order-detail-error" class="hidden" style="padding:24px;">
+  <div class="alert alert-error" id="order-detail-error-message">Failed to load order.</div>
+  <button class="btn btn-primary" onclick="loadOrderDetail()">Retry</button>
+  <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+</div>
+<div id="order-detail-content" class="hidden">
+  <div class="dashboard-header" style="justify-content:space-between;align-items:center;">
+    <h1>Order Detail</h1>
+    <a href="/dashboard" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+  </div>
+  <div id="alert-container"></div>
+  <!-- Order Info Grid -->
+  <div class="card">
+    <div class="escrow-info-grid" id="order-info-grid"></div>
+  </div>
+  <!-- Escrow Panel -->
+  <div id="escrow-panel-container"></div>
+  <!-- Blockchain Audit Link -->
+  <div class="card" style="margin-top:16px;padding:16px;text-align:center;">
+    <a href="/audit/{{order_id or ''}}" id="audit-link" class="btn btn-outline btn-sm">&#128274; View Blockchain Audit Trail</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/api/static/js/escrow-panel.js?v=4"></script>
+<script>initOrderDetailPage();</script>
 {% endblock %}
