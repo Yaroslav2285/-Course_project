@@ -290,7 +290,7 @@ function executorActions(status, orderId) {
 }
 
 // ===== Escrow Actions =====
-function handleEscrowAction(orderId, action) {
+async function handleEscrowAction(orderId, action) {
   if (_actionInProgress[orderId]) return;
   _actionInProgress[orderId] = true;
   var btn = window.event && window.event.target;
@@ -305,18 +305,23 @@ function handleEscrowAction(orderId, action) {
     case 'dispute': confirmMsg = 'Open a dispute for this order?'; break;
     case 'cancel': confirmMsg = 'Cancel this order?'; break;
   }
-  if (confirmMsg && !confirm(confirmMsg)) {
-    if (btn) btn.disabled = false;
-    delete _actionInProgress[orderId];
-    return;
+  if (confirmMsg) {
+    var confirmed = await showConfirmDialog(confirmMsg);
+    if (!confirmed) {
+      if (btn) btn.disabled = false;
+      delete _actionInProgress[orderId];
+      return;
+    }
   }
 
-  doAction(orderId, action).catch(function (err) {
+  try {
+    await doAction(orderId, action);
+  } catch (err) {
     showAlert(err.message, 'error');
-  }).finally(function () {
+  } finally {
     if (btn) btn.disabled = false;
     delete _actionInProgress[orderId];
-  });
+  }
 }
 
 async function doAction(orderId, action) {
@@ -513,7 +518,8 @@ async function saveService() {
 }
 
 async function deleteService(id) {
-  if (!confirm('Delete this service permanently?')) return;
+  var confirmed = await showConfirmDialog('Delete this service permanently?');
+  if (!confirmed) return;
   try {
     await apiDeleteService(id);
     showToast('Service deleted', 'info');

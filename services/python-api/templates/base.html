@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Service Marketplace{% endblock %}</title>
-  <link rel="stylesheet" href="/api/static/css/main.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/main.css?v=6">
   <link rel="stylesheet" href="/api/static/css/skeleton.css?v=1">
   <link rel="stylesheet" href="/api/static/css/catalog.css?v=5">
   <link rel="stylesheet" href="/api/static/css/dashboard.css?v=5">
@@ -39,6 +39,22 @@
     </div>
   </footer>
   <div id="toast-container" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
+
+  <!-- Confirm modal -->
+  <div id="confirm-modal"
+       class="modal-overlay hidden"
+       role="dialog"
+       aria-modal="true"
+       aria-label="Confirm action"
+       tabindex="-1">
+    <div class="modal confirm-modal-content">
+      <p id="confirm-message" class="confirm-message"></p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="confirm-cancel" aria-label="Cancel">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok" aria-label="Confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Global error boundary -->
   <script>
@@ -73,7 +89,7 @@
   <script src="/api/static/js/api.js?v=5"></script>
   <script src="/api/static/js/api-client.js?v=1"></script>
   <script src="/api/static/js/toast.js?v=1"></script>
-  <script src="/api/static/js/utils.js?v=6"></script>
+  <script src="/api/static/js/utils.js?v=7"></script>
   <script src="/api/static/js/auth.js?v=5"></script>
   <script>
     // Run navbar update immediately after auth.js loads

@@ -741,6 +741,17 @@ tr:hover td {
   margin-top: 20px;
 }
 
+.confirm-modal-content {
+  max-width: 400px;
+}
+
+.confirm-message {
+  font-size: 0.9375rem;
+  color: var(--gray-800);
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
 /* ===== Empty state ===== */
 .empty-state {
   text-align: center;

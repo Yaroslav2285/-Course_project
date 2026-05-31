@@ -147,9 +147,12 @@ async function handleEscrowPanelAction(orderId, action) {
     case 'dispute': confirmMsg = 'Open a dispute?'; break;
     case 'cancel': confirmMsg = 'Cancel this order?'; break;
   }
-  if (confirmMsg && !confirm(confirmMsg)) {
-    delete _escrowActionInProgress[orderId];
-    return;
+  if (confirmMsg) {
+    var confirmed = await showConfirmDialog(confirmMsg);
+    if (!confirmed) {
+      delete _escrowActionInProgress[orderId];
+      return;
+    }
   }
 
   var actionsEl = document.getElementById('escrow-actions');
