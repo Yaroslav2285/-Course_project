@@ -19,7 +19,7 @@ class OrderCreate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: str = Field(
         ...,
-        pattern=r"^(pending|funded|released|cancelled|disputed)$",
+        pattern=r"^(pending|funded|in_progress|completed|released|cancelled|disputed)$",
     )
 
 

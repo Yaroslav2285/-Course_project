@@ -176,7 +176,9 @@ async function handleEscrowPanelAction(orderId, action) {
       try {
         await apiEscrowAdvance(orderId, 'IN_PROGRESS');
       } catch (e) {
-        // Model has no in_progress state; order stays funded
+        if (e.status === 404 || e.status === 0) {
+          await apiUpdateOrderStatus(orderId, 'in_progress');
+        } else { throw e; }
       }
       showToast('Order accepted', 'success');
     } else if (action === 'complete') {
@@ -184,7 +186,7 @@ async function handleEscrowPanelAction(orderId, action) {
         await apiEscrowComplete(orderId);
       } catch (e) {
         if (e.status === 404 || e.status === 0) {
-          await apiUpdateOrderStatus(orderId, 'released');
+          await apiUpdateOrderStatus(orderId, 'completed');
         } else { throw e; }
       }
       showToast('Work marked complete!', 'success');

@@ -13,6 +13,8 @@ from .base import Base
 class OrderStatus(str, enum.Enum):
     pending = "pending"
     funded = "funded"
+    in_progress = "in_progress"
+    completed = "completed"
     released = "released"
     cancelled = "cancelled"
     disputed = "disputed"
