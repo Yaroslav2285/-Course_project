@@ -2,7 +2,7 @@
 <!-- LR #10: Multi-lang/REST — Client-side filtering & sorting -->
 <!-- LR #12: AI Integration — skeleton loading, empty/error states -->
 {% extends "base.html" %}
-{% block title %}Service Catalog — Service Marketplace{% endblock %}
+{% block title %}Products — Service Marketplace{% endblock %}
 {% block content %}
 <div class="catalog-layout">
   <!-- Sidebar -->
@@ -13,8 +13,8 @@
     </div>
 
     <div class="filter-group">
-      <label for="filter-search">Search</label>
-      <input type="text" id="filter-search" class="form-control" placeholder="Search services..." autocomplete="off">
+<label for="filter-search">Search</label>
+<input type="text" id="filter-search" class="form-control" placeholder="Search products..." autocomplete="off">
     </div>
 
     <div class="filter-group">
@@ -46,12 +46,13 @@
   <!-- Main -->
   <section class="catalog-main">
     <div class="catalog-header">
-      <h1>Service Catalog</h1>
+      <h1>Products</h1>
       <button class="btn btn-outline btn-sm sidebar-toggle" id="sidebar-toggle">Filters</button>
     </div>
 
     <!-- Loading skeletons -->
     <div class="services-grid" id="services-grid">
+      <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
       <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
       <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>
       <div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>

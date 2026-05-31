@@ -108,6 +108,17 @@ function renderPage() {
 
   hideSkeletons();
 
+  // Update results count
+  var countEl = document.getElementById('catalog-results-count');
+  if (!countEl) {
+    countEl = document.createElement('div');
+    countEl.id = 'catalog-results-count';
+    countEl.className = 'catalog-results-count';
+    var header = document.querySelector('.catalog-header');
+    if (header) header.after(countEl);
+  }
+  countEl.textContent = filteredServices.length + ' product' + (filteredServices.length !== 1 ? 's' : '') + ' found';
+
   if (filteredServices.length === 0) {
     grid.classList.add('hidden');
     emptyState.classList.remove('hidden');
@@ -123,41 +134,83 @@ function renderPage() {
   renderPagination(currentPage, totalPages);
 }
 
+// === Mock marketplace data (deterministic per service ID) ===
+var PRODUCT_CATEGORIES = [
+  'Electronics', 'Clothing', 'Home & Garden', 'Books', 'Sports',
+  'Toys', 'Health', 'Beauty', 'Automotive', 'Food',
+  'Music', 'Office', 'Pet Supplies', 'Baby', 'Jewelry',
+];
+
+var PRODUCT_SELLERS = [
+  'TechStore', 'FashionHub', 'HomeComfort', 'BookWorld', 'SportZone',
+  'ToyLand', 'HealthPlus', 'GlamourShop', 'AutoParts', 'FreshMarket',
+];
+
+function _hashId(id) {
+  var h = 0;
+  if (!id) return 0;
+  var str = String(id);
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function getMockProductData(service, index) {
+  var hash = _hashId(service.id) || (index * 7 + 13);
+  var catIdx = hash % PRODUCT_CATEGORIES.length;
+  var sellIdx = Math.floor(hash / PRODUCT_CATEGORIES.length) % PRODUCT_SELLERS.length;
+  var ratingScore = (2.5 + (hash % 25) / 10).toFixed(1);
+  var reviewCount = 10 + (hash % 990);
+  var discount = (hash % 4 === 0) ? (5 + hash % 20) : 0;
+  var imageIdx = hash % 100;
+
+  return {
+    category: PRODUCT_CATEGORIES[catIdx],
+    seller: PRODUCT_SELLERS[sellIdx],
+    rating: parseFloat(ratingScore),
+    reviews: reviewCount,
+    discount: discount,
+    imageSeed: imageIdx,
+  };
+}
+
+function renderStars(rating) {
+  var full = Math.round(rating);
+  var html = '';
+  for (var i = 0; i < 5; i++) {
+    html += i < full ? '&#9733;' : '&#9734;';
+  }
+  return html;
+}
+
 // === Render service cards ===
 function renderCards(services) {
   var auth = checkAuth();
   var role = auth.role;
 
-  var html = services.map(function (s) {
+  var html = services.map(function (s, i) {
     var price = parseFloat(s.price);
     var formattedPrice = '$' + price.toFixed(2);
 
-    var priceStr = price % 1 === 0 ? '$' + price.toFixed(2) : formattedPrice;
-
-    // Format date
-    var dateStr = '';
-    try {
-      dateStr = new Date(s.created_at).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-      });
-    } catch (e) {
-      dateStr = '';
+    var mock = getMockProductData(s, i);
+    var discountedPrice = price;
+    var originalPriceStr = '';
+    if (mock.discount > 0) {
+      discountedPrice = price * (1 - mock.discount / 100);
+      originalPriceStr = '$' + price.toFixed(2);
     }
 
-    var truncatedDesc = s.description || 'No description provided.';
-    if (truncatedDesc.length > 150) {
-      truncatedDesc = truncatedDesc.substring(0, 147) + '...';
-    }
+    var imageUrl = 'https://picsum.photos/seed/' + mock.imageSeed + '/400/300';
 
-    var statusBadge = renderBadge(s.status);
-
-    // Role-aware order button
-    var orderBtn = '';
+    // Role-aware button
+    var btnHtml = '';
     if (!auth.isAuthenticated) {
-      orderBtn = '<a href="/register" class="btn btn-primary btn-sm">Order</a>';
+      btnHtml = '<a href="/register" class="product-add-btn">Add to Cart</a>';
     } else if (role === 'client') {
-      orderBtn =
-        '<button class="btn btn-primary btn-sm order-btn" data-service-id="' +
+      btnHtml =
+        '<button class="product-add-btn order-btn" data-service-id="' +
         s.id +
         '" data-provider-id="' +
         s.provider_id +
@@ -165,40 +218,47 @@ function renderCards(services) {
         s.price +
         '" data-service-title="' +
         escapeHtml(s.title).replace(/"/g, '&quot;') +
-        '">Order</button>';
+        '">Add to Cart</button>';
     } else if (role === 'provider') {
-      orderBtn =
-        '<button class="btn btn-outline btn-sm" disabled title="Available only for clients">Order</button>';
+      btnHtml =
+        '<button class="product-add-btn btn-outline" disabled title="Available only for clients">Add to Cart</button>';
     } else {
-      orderBtn = '<button class="btn btn-primary btn-sm order-btn" data-service-id="' + s.id + '">Order</button>';
+      btnHtml = '<button class="product-add-btn order-btn" data-service-id="' + s.id + '">Add to Cart</button>';
     }
+
+    var starsHtml = renderStars(mock.rating);
 
     return (
       '<div class="service-card" data-id="' +
       s.id +
       '">' +
       '<div class="service-card-image">' +
-      '<div class="service-card-placeholder">&#x1F6D2;</div>' +
+      '<img src="' + imageUrl + '" alt="' + escapeHtml(s.title) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+      '<div class="service-card-image-placeholder" style="display:none;">' +
+      escapeHtml(s.title.charAt(0)) +
+      '</div>' +
+      '<span class="product-category-badge">' +
+      escapeHtml(mock.category) +
+      '</span>' +
+      (mock.discount > 0 ? '<span class="product-discount-badge">-' + mock.discount + '%</span>' : '') +
       '</div>' +
       '<div class="service-card-body">' +
       '<h3 class="service-card-title">' +
       escapeHtml(s.title) +
       '</h3>' +
-      '<p class="service-card-description">' +
-      escapeHtml(truncatedDesc) +
-      '</p>' +
-      '<div class="service-card-meta">' +
-      statusBadge +
-      '<span class="service-card-category">' +
-      escapeHtml(dateStr) +
-      '</span>' +
+      '<div class="product-rating">' +
+      '<span class="product-rating-stars">' + starsHtml + '</span>' +
+      '<span class="product-rating-score">' + mock.rating.toFixed(1) + '</span>' +
+      '<span class="product-rating-count">(' + mock.reviews + ')</span>' +
       '</div>' +
+      '<div class="product-seller">by <strong>' + escapeHtml(mock.seller) + '</strong></div>' +
       '</div>' +
       '<div class="service-card-footer">' +
       '<span class="service-card-price">' +
-      formattedPrice +
+      '$' + discountedPrice.toFixed(2) +
+      (originalPriceStr ? '<span class="price-original">' + originalPriceStr + '</span>' : '') +
       '</span>' +
-      orderBtn +
+      btnHtml +
       '</div>' +
       '</div>'
     );
@@ -311,8 +371,8 @@ function renderPagination(current, total) {
 
 // === Skeleton helpers ===
 function showSkeletons() {
-  // Skeletons are in the HTML already, just make sure grid shows them
   grid.innerHTML =
+    '<div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>' +
     '<div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>' +
     '<div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>' +
     '<div class="skeleton-card"><div class="skeleton skeleton-image"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-price"></div></div>';
