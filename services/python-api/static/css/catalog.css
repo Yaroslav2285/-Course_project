@@ -115,8 +115,8 @@
 /* ===== Marketplace Grid ===== */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
 }
 
 /* ===== Product Card ===== */
@@ -465,13 +465,7 @@
 }
 
 /* ===== Mobile Responsiveness ===== */
-@media (max-width: 1100px) {
-  .services-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .services-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -506,7 +500,6 @@
   }
 
   .services-grid {
-    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
 
