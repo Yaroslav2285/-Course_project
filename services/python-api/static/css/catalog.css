@@ -277,17 +277,23 @@
 }
 
 .service-card-price {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.service-card-price .price-current {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--primary);
 }
 
 .service-card-price .price-original {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 400;
   color: var(--gray-400);
   text-decoration: line-through;
-  margin-left: 6px;
+  order: -1;
 }
 
 /* Add to cart button */

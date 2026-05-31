@@ -197,7 +197,8 @@ function renderCards(services) {
     var mock = getMockProductData(s, i);
     var discountedPrice = price;
     var originalPriceStr = '';
-    if (mock.discount > 0) {
+    var hasDiscount = mock.discount > 0;
+    if (hasDiscount) {
       discountedPrice = price * (1 - mock.discount / 100);
       originalPriceStr = '$' + price.toFixed(2);
     }
@@ -228,6 +229,10 @@ function renderCards(services) {
 
     var starsHtml = renderStars(mock.rating);
 
+    var priceHtml = hasDiscount
+      ? '<span class="price-original">' + originalPriceStr + '</span><span class="price-current">$' + discountedPrice.toFixed(2) + '</span>'
+      : '<span class="price-current">$' + discountedPrice.toFixed(2) + '</span>';
+
     return (
       '<div class="service-card" data-id="' +
       s.id +
@@ -240,7 +245,7 @@ function renderCards(services) {
       '<span class="product-category-badge">' +
       escapeHtml(mock.category) +
       '</span>' +
-      (mock.discount > 0 ? '<span class="product-discount-badge">-' + mock.discount + '%</span>' : '') +
+      (hasDiscount ? '<span class="product-discount-badge">-' + mock.discount + '%</span>' : '') +
       '</div>' +
       '<div class="service-card-body">' +
       '<h3 class="service-card-title">' +
@@ -254,10 +259,9 @@ function renderCards(services) {
       '<div class="product-seller">by <strong>' + escapeHtml(mock.seller) + '</strong></div>' +
       '</div>' +
       '<div class="service-card-footer">' +
-      '<span class="service-card-price">' +
-      '$' + discountedPrice.toFixed(2) +
-      (originalPriceStr ? '<span class="price-original">' + originalPriceStr + '</span>' : '') +
-      '</span>' +
+      '<div class="service-card-price">' +
+      priceHtml +
+      '</div>' +
       btnHtml +
       '</div>' +
       '</div>'
