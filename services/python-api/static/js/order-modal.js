@@ -134,11 +134,22 @@ async function submitOrderModal() {
   submitText.textContent = 'Placing Order...';
   submitSpinner.classList.remove('hidden');
 
+  var user = getUser();
+  if (!user || !user.id) {
+    errorEl.textContent = 'User not authenticated. Please log in.';
+    errorEl.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitText.textContent = 'Place Order';
+    submitSpinner.classList.add('hidden');
+    return;
+  }
+
   try {
     await apiClient('/orders/', {
       method: 'POST',
       body: JSON.stringify({
         service_id: state.serviceId,
+        buyer_id: user.id,
         seller_id: state.providerId,
         amount: parseFloat(state.price) * qty
       })
