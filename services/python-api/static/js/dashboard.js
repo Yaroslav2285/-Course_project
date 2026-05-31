@@ -7,13 +7,6 @@ var serviceData = [];
 var _actionInProgress = {};
 
 // ===== Helpers =====
-function formatPrice(p) { return '$' + parseFloat(p).toFixed(2); }
-function formatDate(d) {
-  if (!d) return '';
-  var dt = new Date(d);
-  return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 async function fetchServiceTitle(id) {
   if (serviceCache[id]) return serviceCache[id];
   try {
@@ -24,12 +17,6 @@ async function fetchServiceTitle(id) {
     }
   } catch (e) { /* ignore */ }
   return id.slice(0, 8) + '...';
-}
-
-function statusBadge(status) {
-  if (!status) return '';
-  var cls = status === 'in_progress' ? 'in_progress' : status;
-  return '<span class="order-badge status-' + cls + '">' + status.replace(/_/g, ' ') + '</span>';
 }
 
 function showSkeleton(parent, rows) {
@@ -152,36 +139,8 @@ async function renderClientOrders(tbody, orders) {
 
 function clientActions(status, orderId) {
   var html = '';
-  // Escrow-flow mapping: the frontend shows escrow-style labels
-  // Map order status → escrow equivalent actions
-  switch (status) {
-    case 'pending':
-      html += '<button class="btn-action btn-action-pay" onclick="handleEscrowAction(\'' + orderId + '\',\'fund\')">Pay</button>';
-      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
-      break;
-    case 'funded':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Awaiting completion</span>';
-      break;
-    case 'in_progress':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Executor working</span>';
-      html += '<button class="btn-action btn-action-dispute" onclick="handleEscrowAction(\'' + orderId + '\',\'dispute\')">Dispute</button>';
-      break;
-    case 'completed':
-      html += '<button class="btn-action btn-action-release" onclick="handleEscrowAction(\'' + orderId + '\',\'release\')">Confirm Release</button>';
-      html += '<button class="btn-action btn-action-dispute" onclick="handleEscrowAction(\'' + orderId + '\',\'dispute\')">Dispute</button>';
-      break;
-    case 'released':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;color:var(--success);font-weight:600;">✓ Completed</span>';
-      break;
-    case 'disputed':
-      html += '<a href="/audit/' + orderId + '" class="btn-action btn-action-dispute">View Dispute</a>';
-      break;
-    case 'cancelled':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Cancelled</span>';
-      break;
-    default:
-      html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">View</a>';
-  }
+  // Phase 7.4: Replace inline escrow actions with "View Detail" link to order detail page
+  html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">Details</a>';
   return html;
 }
 
@@ -304,33 +263,8 @@ async function renderIncomingOrders(tbody, orders) {
 
 function executorActions(status, orderId) {
   var html = '';
-  switch (status) {
-    case 'pending':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Awaiting payment</span>';
-      break;
-    case 'funded':
-      html += '<button class="btn-action btn-action-accept" onclick="handleEscrowAction(\'' + orderId + '\',\'advance\')">Accept & Start</button> ';
-      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
-      break;
-    case 'in_progress':
-      html += '<button class="btn-action btn-action-complete" onclick="handleEscrowAction(\'' + orderId + '\',\'complete\')">Complete Work</button> ';
-      html += '<button class="btn-action btn-action-cancel" onclick="handleEscrowAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
-      break;
-    case 'completed':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Pending client confirmation</span>';
-      break;
-    case 'released':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;color:var(--success);font-weight:600;">✓ Payment received</span>';
-      break;
-    case 'disputed':
-      html += '<a href="/audit/' + orderId + '" class="btn-action btn-action-dispute">Respond to Dispute</a>';
-      break;
-    case 'cancelled':
-      html += '<span class="text-secondary" style="font-size:0.8125rem;">Cancelled</span>';
-      break;
-    default:
-      html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">View</a>';
-  }
+  // Phase 7.4: Replace inline escrow actions with "View Detail" link to order detail page
+  html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">Details</a>';
   return html;
 }
 
