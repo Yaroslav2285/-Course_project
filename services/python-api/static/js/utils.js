@@ -2,12 +2,10 @@
 // LR #12: AI Integration — debounce, escapeHtml, renderBadge
 // LR #15: Security/UX — showToast delegated to toast.js, backwards compatible
 
-// === Toast notifications (backwards compat — delegates to toast.js) ===
-function showToast(message, type) {
-  if (typeof window.showToast === 'function') {
-    window.showToast(message, type, 4000);
-  }
-}
+// === Toast notifications (provided by toast.js) ===
+// showToast is defined in toast.js as window.showToast.
+// Do NOT redeclare here — utils.js showToast was removed to prevent
+// recursion (it was overwriting window.showToast and calling itself).
 
 // === Alert helper ===
 function showAlert(message, type, containerId) {
