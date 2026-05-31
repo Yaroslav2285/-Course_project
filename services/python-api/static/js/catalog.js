@@ -233,6 +233,12 @@ function renderCards(services) {
     return (
       '<div class="service-card" data-id="' +
       s.id +
+      '" data-provider-id="' +
+      s.provider_id +
+      '" data-price="' +
+      s.price +
+      '" data-service-title="' +
+      escapeHtml(s.title).replace(/"/g, '&quot;') +
       '">' +
       '<div class="service-card-image">' +
       '<img src="' + imageUrl + '" alt="' + escapeHtml(s.title) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
@@ -267,9 +273,22 @@ function renderCards(services) {
 
   grid.innerHTML = html;
 
+  // Attach card click — opens order modal
+  grid.querySelectorAll('.service-card').forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.order-btn, .product-add-btn, a, button')) return;
+      var serviceId = card.getAttribute('data-id');
+      var providerId = card.getAttribute('data-provider-id');
+      var price = card.getAttribute('data-price');
+      var serviceTitle = card.getAttribute('data-service-title');
+      handleOrderClick(serviceId, providerId, price, serviceTitle);
+    });
+  });
+
   // Attach order button listeners
   grid.querySelectorAll('.order-btn').forEach(function (btn) {
     btn.addEventListener('click', function (e) {
+      e.stopPropagation();
       e.preventDefault();
       var serviceId = btn.getAttribute('data-service-id');
       var providerId = btn.getAttribute('data-provider-id');
