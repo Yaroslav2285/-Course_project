@@ -67,6 +67,26 @@ class EscrowClient:
             idempotency_key=idempotency_key,
         )
 
+    async def advance_escrow(
+        self, escrow_id: str, status: str, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/v1/escrow/{escrow_id}/advance",
+            json={"status": status},
+            idempotency_key=idempotency_key,
+        )
+
+    async def complete_escrow(
+        self, escrow_id: str, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/v1/escrow/{escrow_id}/complete",
+            json={},
+            idempotency_key=idempotency_key,
+        )
+
     async def dispute_escrow(
         self, escrow_id: str, reason: str, idempotency_key: str | None = None
     ) -> dict[str, Any]:
