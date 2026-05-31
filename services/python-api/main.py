@@ -47,6 +47,7 @@ async def lifespan(app: FastAPI):
     import models.users  # noqa: F401
     import models.services  # noqa: F401
     import models.orders  # noqa: F401
+    import models.wallet  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")

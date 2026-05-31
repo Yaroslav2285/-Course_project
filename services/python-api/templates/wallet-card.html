@@ -1,0 +1,57 @@
+<!-- LR #6: Web/DB — Wallet card (Phase 7.6) -->
+<!-- LR #12: AI Integration — balance display, topup modal -->
+<!-- LR #15: Security/UX — focus trap, aria attributes -->
+
+<!-- Wallet Balance Card -->
+<div class="wallet-section">
+  <div class="wallet-balance-card">
+    <div class="wallet-balance-info">
+      <span class="wallet-balance-label">Ваш баланс</span>
+      <div id="wallet-balance-skeleton" class="wallet-balance-skeleton"></div>
+      <div id="wallet-balance-content" class="wallet-balance-content">
+        <span class="wallet-balance-amount" id="wallet-balance-value">0 ₽</span>
+      </div>
+    </div>
+    <div class="wallet-balance-actions">
+      <span class="wallet-currency-badge">RUB</span>
+      <button class="btn" id="wallet-topup-btn" onclick="openTopUpModal()" aria-label="Пополнить кошелёк">+ Пополнить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Topup Modal -->
+<div id="topup-modal"
+     class="modal-overlay hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Пополнение кошелька"
+     onclick="if(event.target===this)closeTopUpModal()"
+     tabindex="-1">
+  <div class="modal">
+    <h3>Пополнение кошелька</h3>
+    <form onsubmit="handleTopUp(event)">
+      <div class="topup-amount-row">
+        <label for="topup-amount">Сумма пополнения</label>
+        <div class="topup-amount-input-wrap">
+          <span class="topup-currency">₽</span>
+          <input type="number" id="topup-amount" class="form-control" placeholder="0.00" min="1" step="1" aria-required="true" autocomplete="off">
+        </div>
+      </div>
+      <div class="topup-method-row">
+        <label for="topup-method">Способ пополнения</label>
+        <select id="topup-method" class="topup-method-select">
+          <option value="virtual">Виртуальный счёт</option>
+          <option value="card" disabled>Банковская карта (скоро)</option>
+        </select>
+      </div>
+      <div id="topup-error" class="alert alert-error hidden" role="alert"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeTopUpModal()" aria-label="Отменить">Отмена</button>
+        <button type="submit" class="btn btn-primary" id="topup-submit" aria-label="Пополнить">
+          <span id="topup-submit-text">Пополнить</span>
+          <span id="topup-submit-spinner" class="spinner hidden" style="width:16px;height:16px;margin:0;"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

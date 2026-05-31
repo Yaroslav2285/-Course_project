@@ -194,6 +194,7 @@ function updateNavbar() {
 
     menu.innerHTML =
       '<a href="/catalog">Catalog</a>' +
+      '<a href="/wallet">Wallet</a>' +
       '<a href="' + dashUrl + '">Dashboard</a>';
 
     emailEl.textContent = user.email;

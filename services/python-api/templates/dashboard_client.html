@@ -1,5 +1,6 @@
-<!-- LR #6: Web/DB — Client dashboard with escrow order management -->
+<!-- LR #6: Web/DB — Client dashboard with wallet + escrow order management -->
 <!-- LR #12: AI Integration — role-based actions, escrow state machine -->
+<!-- LR #7.6: Wallet module — balance card, topup, transaction history -->
 {% extends "base.html" %}
 {% block title %}My Orders — Service Marketplace{% endblock %}
 {% block content %}
@@ -7,6 +8,8 @@
   <h1>My Orders</h1>
 </div>
 <div id="alert-container"></div>
+
+{% include "wallet-card.html" %}
 
 <div class="card">
   <div id="orders-loading">
@@ -39,5 +42,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="/api/static/js/dashboard.js?v=9"></script>
+<script src="/api/static/js/wallet.js?v=3"></script>
 <script>initClientDashboard();</script>
+<script>initWallet();</script>
 {% endblock %}

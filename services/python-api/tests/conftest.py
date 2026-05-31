@@ -5,7 +5,6 @@ import os
 # Force SQLite for tests regardless of .env or working directory
 os.environ["DB_URL"] = "sqlite+aiosqlite:///./test.db"
 
-import asyncio
 from typing import AsyncGenerator
 from uuid import uuid4
 
@@ -25,14 +24,7 @@ from models.users import User
 TEST_DB_URL = settings.DB_URL
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function", loop_scope="session")
 async def engine():
     async_engine = create_async_engine(TEST_DB_URL, echo=False)
     if TEST_DB_URL.startswith("sqlite"):

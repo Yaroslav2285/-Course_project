@@ -243,6 +243,22 @@ async function apiEscrowAdvance(orderId, status) {
   });
 }
 
+// Wallet API
+async function apiFetchWalletBalance() {
+  return apiFetch('/wallet/balance');
+}
+
+async function apiFetchWalletTopUp(amount) {
+  return apiFetch('/wallet/topup', {
+    method: 'POST',
+    body: JSON.stringify({ amount: amount }),
+  });
+}
+
+async function apiFetchWalletTransactions(limit) {
+  return apiFetch('/wallet/transactions?limit=' + (limit || 20));
+}
+
 // Blockchain audit (proxy via Python API)
 async function apiFetchAudit(orderId) {
   try {

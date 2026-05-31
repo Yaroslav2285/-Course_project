@@ -51,6 +51,11 @@ async def dashboard_executor_page(request: Request):
     return templates.TemplateResponse(request, "dashboard_executor.html", {"request": request})
 
 
+@router.get("/wallet", response_class=HTMLResponse, include_in_schema=False)
+async def wallet_page(request: Request):
+    return templates.TemplateResponse(request, "wallet.html", {"request": request})
+
+
 @router.get("/orders", response_class=HTMLResponse, include_in_schema=False)
 async def orders_page(request: Request):
     return templates.TemplateResponse(request, "orders.html", {"request": request})

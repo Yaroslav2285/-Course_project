@@ -15,6 +15,7 @@ from models.base import Base  # noqa: E402
 from models.orders import Order  # noqa: F401, E402
 from models.services import Service  # noqa: F401, E402
 from models.users import User  # noqa: F401, E402
+from models.wallet import Wallet, Transaction  # noqa: F401, E402
 
 config = context.config
 fileConfig(config.config_file_name)

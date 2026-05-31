@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Wallet — Service Marketplace{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+  <h1>Wallet</h1>
+</div>
+
+{% include "wallet-card.html" %}
+
+<!-- Wallet History -->
+<div class="card">
+  <div class="wallet-history-header">
+    <h3>История операций</h3>
+  </div>
+  <div class="wallet-history-table-wrap">
+    <table class="wallet-history-table" role="table" aria-label="История операций кошелька">
+      <thead>
+        <tr>
+          <th scope="col">Дата</th>
+          <th scope="col">Тип</th>
+          <th scope="col">Сумма</th>
+          <th scope="col">Статус</th>
+          <th scope="col">ID</th>
+        </tr>
+      </thead>
+      <tbody id="wallet-history-body">
+        <tr><td colspan="5"><div class="flex-center" style="padding:24px;"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="wallet-history-empty" class="wallet-history-empty" style="display:none;">
+    Нет операций
+  </div>
+  <div class="wallet-history-footer">
+    <button id="wallet-history-more" class="btn btn-outline btn-sm" style="display:none;">Показать ещё</button>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/api/static/js/wallet.js?v=3"></script>
+<script>initWallet();</script>
+{% endblock %}
