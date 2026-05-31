@@ -1,11 +1,40 @@
-<!-- LR #6: Web/DB — Blockchain audit page (placeholder for Phase 7.5) -->
+<!-- LR #6: Web/DB — Blockchain audit page (Phase 7.4) -->
+<!-- LR #10: Multi-lang/REST — audit chain via chain proxy -->
+<!-- LR #12: AI Integration — skeleton, empty, error, integrity check -->
+<!-- LR #14: Data Engineering/Hashing — block chain display -->
 {% extends "base.html" %}
 {% block title %}Blockchain Audit — Service Marketplace{% endblock %}
 {% block content %}
-<h1 class="mb-4">Blockchain Audit</h1>
-<div id="alert-container"></div>
-<div class="card">
-  <p class="text-secondary">Blockchain audit trail will be available in the next update.</p>
+<div class="audit-container">
+  <div id="audit-loading" class="audit-skeleton">
+    <div class="skeleton skeleton-title" style="height:28px;width:60%;margin-bottom:20px;"></div>
+    <div class="skeleton-card"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+    <div class="skeleton-card" style="margin-top:12px;"><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+  </div>
+  <div id="audit-empty" class="audit-empty hidden">
+    <div class="empty-icon">&#128269;</div>
+    <h3>No audit trail found</h3>
+    <p>This order has no blockchain audit records yet.</p>
+    <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+  </div>
+  <div id="audit-error" class="audit-error hidden">
+    <div class="alert alert-error" id="audit-error-message">Failed to load audit data.</div>
+    <button class="btn btn-primary" onclick="loadAudit()">Retry</button>
+    <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+  </div>
+  <div id="audit-content" class="audit-content hidden">
+    <div class="audit-header">
+      <h2>&#128274; Blockchain Audit</h2>
+      <span id="audit-integrity" class="audit-integrity-badge unknown">&#8987; Checking...</span>
+    </div>
+    <div id="chain-blocks" class="chain-blocks"></div>
+    <div style="margin-top:24px;text-align:center;">
+      <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+    </div>
+  </div>
 </div>
-<a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+{% endblock %}
+{% block scripts %}
+<script src="/api/static/js/audit.js?v=4"></script>
+<script>initAuditPage();</script>
 {% endblock %}
