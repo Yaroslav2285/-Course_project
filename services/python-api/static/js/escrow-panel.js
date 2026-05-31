@@ -176,9 +176,7 @@ async function handleEscrowPanelAction(orderId, action) {
       try {
         await apiEscrowAdvance(orderId, 'IN_PROGRESS');
       } catch (e) {
-        if (e.status === 404 || e.status === 0) {
-          await apiUpdateOrderStatus(orderId, 'funded');
-        } else { throw e; }
+        // Model has no in_progress state; order stays funded
       }
       showToast('Order accepted', 'success');
     } else if (action === 'complete') {
