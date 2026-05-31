@@ -465,6 +465,21 @@
   color: var(--white);
 }
 
+/* ===== Touch targets ===== */
+.service-card .product-add-btn,
+.sidebar-toggle,
+.sidebar-close,
+.pagination button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.service-card .product-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ===== Mobile Responsiveness ===== */
 @media (max-width: 1000px) {
   .services-grid {

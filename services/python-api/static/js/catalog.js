@@ -504,17 +504,27 @@ function initCatalogPage() {
     retryBtn.addEventListener('click', loadServices);
   }
 
-  // Sidebar toggle (mobile)
+  // Sidebar toggle (mobile) with ARIA
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', function () {
-      sidebar.classList.toggle('open');
+      var isOpen = sidebar.classList.toggle('open');
+      sidebarToggle.setAttribute('aria-expanded', isOpen);
     });
   }
   if (sidebarClose) {
     sidebarClose.addEventListener('click', function () {
       sidebar.classList.remove('open');
+      if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', 'false');
     });
   }
+
+  // Close sidebar on Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sidebar && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', 'false');
+    }
+  });
 
   // Load data
   loadServices();

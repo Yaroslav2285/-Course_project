@@ -408,17 +408,48 @@ textarea.form-control {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  pointer-events: none;
 }
 
 .toast {
-  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
   border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
   box-shadow: var(--shadow-lg);
-  animation: toastIn 0.3s ease-out;
-  max-width: 360px;
+  max-width: 380px;
   color: var(--white);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.toast-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast.toast-hiding {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.toast-text {
+  flex: 1;
+  line-height: 1.4;
 }
 
 .toast-success {
@@ -427,6 +458,10 @@ textarea.form-control {
 
 .toast-error {
   background: #991B1B;
+}
+
+.toast-warning {
+  background: #92400E;
 }
 
 .toast-info {

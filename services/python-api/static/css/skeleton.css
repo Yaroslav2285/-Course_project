@@ -1,0 +1,96 @@
+/* LR #6: Web/DB — Shared skeleton shimmer for cards, tables, text */
+/* LR #12: AI Integration — shimmer animation, loading placeholders */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Text skeleton */
+.skeleton-text {
+  height: 12px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.skeleton-text:last-child {
+  width: 65%;
+}
+
+/* Title skeleton */
+.skeleton-title {
+  height: 18px;
+  width: 70%;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+}
+
+/* Block skeleton (large rectangle) */
+.skeleton-block {
+  height: 120px;
+  width: 100%;
+  border-radius: var(--radius);
+}
+
+/* Card skeleton wrapper */
+.skeleton-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 16px;
+}
+
+/* Image skeleton (4:3 aspect ratio) */
+.skeleton-image {
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  width: 100%;
+}
+
+/* Price skeleton */
+.skeleton-price {
+  height: 18px;
+  width: 35%;
+  border-radius: var(--radius-sm);
+}
+
+/* Table row skeleton */
+.skeleton-row {
+  pointer-events: none;
+}
+
+.skeleton-cell {
+  padding: 12px 16px;
+}
+
+.skeleton-bar {
+  height: 14px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-bar.short { width: 40%; }
+.skeleton-bar.medium { width: 60%; }
+.skeleton-bar.long { width: 85%; }
+
+.skeleton-badge {
+  display: inline-block;
+  width: 70px;
+  height: 22px;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 999px;
+}

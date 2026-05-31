@@ -1,0 +1,230 @@
+/* LR #6: Web/DB — Responsive tables, touch targets, mobile nav */
+/* LR #15: Security/UX — min 44x44px touch targets, card-based tables */
+
+/* ===== Touch targets ===== */
+.btn,
+button,
+input[type="submit"],
+input[type="button"],
+.filter-group select,
+.pagination button,
+.product-add-btn,
+.sidebar-toggle,
+.sidebar-close {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.btn-sm {
+  min-height: 36px;
+  min-width: 36px;
+}
+
+/* ===== Responsive tables → Cards ===== */
+@media (max-width: 768px) {
+  /* Force tables to behave as card list */
+  .orders-table {
+    border: 0;
+  }
+
+  .orders-table thead {
+    display: none;
+  }
+
+  .orders-table tbody,
+  .orders-table tr,
+  .orders-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .orders-table tr {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+
+  .orders-table tr:hover td {
+    background: transparent;
+  }
+
+  .orders-table td {
+    padding: 6px 0;
+    border: none;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .orders-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+
+  .orders-table td.order-actions::before {
+    content: attr(data-label);
+  }
+
+  .orders-table td.order-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  /* Mobile table empty state */
+  .dashboard-empty {
+    padding: 32px 16px;
+  }
+
+  /* Navbar improvements for mobile */
+  .navbar {
+    flex-wrap: wrap;
+    min-height: 56px;
+    height: auto;
+    padding: 8px 12px;
+  }
+
+  .navbar-user {
+    width: 100%;
+    border-left: none;
+    margin-left: 0;
+    padding: 8px 0 0;
+    justify-content: flex-end;
+  }
+
+  .navbar-user .user-email {
+    max-width: 140px;
+  }
+
+  /* Dashboard tabs scrolling */
+  .dashboard-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+  }
+
+  .dashboard-tab {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    padding: 8px 14px;
+    min-height: 44px;
+  }
+
+  /* Card header stacking */
+  .card-header.flex-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 12px 8px;
+  }
+
+  .navbar {
+    padding: 6px 8px;
+  }
+
+  .navbar-brand {
+    font-size: 1rem;
+  }
+
+  .navbar-menu a {
+    padding: 6px;
+    font-size: 0.75rem;
+  }
+
+  .modal {
+    width: 96%;
+    padding: 16px;
+    margin: 8px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Auth pages */
+  .auth-card {
+    padding: 20px 16px;
+  }
+
+  .auth-card h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Dashboard tables on very small screens */
+  .orders-table td::before {
+    min-width: 60px;
+    font-size: 0.7rem;
+  }
+
+  /* Tiny toast */
+  .toast-container {
+    right: 8px;
+    left: 8px;
+  }
+
+  .toast {
+    max-width: 100%;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ===== Focus styles for accessibility ===== */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Skip to content (accessibility) ===== */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary);
+  color: var(--white);
+  padding: 8px 16px;
+  z-index: 10000;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius) 0;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}

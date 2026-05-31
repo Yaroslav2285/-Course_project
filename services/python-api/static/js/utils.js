@@ -1,27 +1,12 @@
 // LR #6: Web/DB — Utility functions for Service Marketplace UI
-// LR #12: AI Integration — toast, debounce, escapeHtml, renderBadge
+// LR #12: AI Integration — debounce, escapeHtml, renderBadge
+// LR #15: Security/UX — showToast delegated to toast.js, backwards compatible
 
-// === Toast notifications ===
+// === Toast notifications (backwards compat — delegates to toast.js) ===
 function showToast(message, type) {
-  type = type || 'success';
-  let container = document.getElementById('toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toast-container';
-    container.className = 'toast-container';
-    document.body.appendChild(container);
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, type, 4000);
   }
-  const toast = document.createElement('div');
-  toast.className = 'toast toast-' + type;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(function () {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(function () {
-      toast.remove();
-    }, 300);
-  }, 3500);
 }
 
 // === Alert helper ===

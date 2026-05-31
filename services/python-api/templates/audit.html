@@ -1,7 +1,8 @@
-<!-- LR #6: Web/DB — Blockchain audit page (Phase 7.4) -->
+<!-- LR #6: Web/DB — Blockchain audit page (Phase 7.5) -->
 <!-- LR #10: Multi-lang/REST — audit chain via chain proxy -->
 <!-- LR #12: AI Integration — skeleton, empty, error, integrity check -->
 <!-- LR #14: Data Engineering/Hashing — block chain display -->
+<!-- LR #15: Security/UX — ARIA labels, integrity badge roles -->
 {% extends "base.html" %}
 {% block title %}Blockchain Audit — Service Marketplace{% endblock %}
 {% block content %}
@@ -22,12 +23,12 @@
     <button class="btn btn-primary" onclick="loadAudit()">Retry</button>
     <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
   </div>
-  <div id="audit-content" class="audit-content hidden">
+  <div id="audit-content" class="audit-content hidden" role="region" aria-label="Blockchain audit trail">
     <div class="audit-header">
       <h2>&#128274; Blockchain Audit</h2>
-      <span id="audit-integrity" class="audit-integrity-badge unknown">&#8987; Checking...</span>
+      <span id="audit-integrity" class="audit-integrity-badge unknown" role="status">&#8987; Checking...</span>
     </div>
-    <div id="chain-blocks" class="chain-blocks"></div>
+    <div id="chain-blocks" class="chain-blocks" role="list" aria-label="Block chain blocks"></div>
     <div style="margin-top:24px;text-align:center;">
       <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
     </div>
@@ -35,6 +36,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="/api/static/js/audit.js?v=4"></script>
+<script src="/api/static/js/audit.js?v=5"></script>
 <script>initAuditPage();</script>
 {% endblock %}

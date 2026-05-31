@@ -6,11 +6,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Service Marketplace{% endblock %}</title>
-  <link rel="stylesheet" href="/api/static/css/main.css?v=2">
-  <link rel="stylesheet" href="/api/static/css/catalog.css?v=2">
-  <link rel="stylesheet" href="/api/static/css/dashboard.css?v=2">
-  <link rel="stylesheet" href="/api/static/css/escrow.css?v=4">
-  <link rel="stylesheet" href="/api/static/css/audit.css?v=4">
+  <link rel="stylesheet" href="/api/static/css/main.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/skeleton.css?v=1">
+  <link rel="stylesheet" href="/api/static/css/catalog.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/dashboard.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/escrow.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/audit.css?v=5">
+  <link rel="stylesheet" href="/api/static/css/responsive.css?v=1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛒</text></svg>">
 </head>
 <body>
@@ -36,17 +38,37 @@
       <p>&copy; 2026 Service Marketplace. All rights reserved.</p>
     </div>
   </footer>
-  <div id="toast-container" class="toast-container"></div>
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
 
-  <script src="/api/static/js/api.js?v=4"></script>
-  <script src="/api/static/js/api-client.js?v=4"></script>
-  <script src="/api/static/js/utils.js?v=2"></script>
-  <script src="/api/static/js/auth.js?v=2"></script>
+  <!-- Global error boundary -->
+  <script>
+    // LR #15: Security/UX — Global error handler, prevents SPA crash
+    window.onerror = function (msg, url, line, col, err) {
+      console.error('[Global Error]', msg, 'at', url, 'line', line, err);
+      if (typeof showToast === 'function') {
+        showToast('An unexpected error occurred. Please try again.', 'error');
+      }
+      return true;
+    };
+    window.addEventListener('unhandledrejection', function (e) {
+      console.error('[Unhandled Rejection]', e.reason);
+      if (typeof showToast === 'function') {
+        showToast('An unexpected error occurred. Please try again.', 'error');
+      }
+      e.preventDefault();
+    });
+  </script>
+
+  <script src="/api/static/js/api.js?v=5"></script>
+  <script src="/api/static/js/api-client.js?v=1"></script>
+  <script src="/api/static/js/toast.js?v=1"></script>
+  <script src="/api/static/js/utils.js?v=5"></script>
+  <script src="/api/static/js/auth.js?v=5"></script>
   <script>
     // Run navbar update immediately after auth.js loads
     if (typeof updateNavbar === 'function') updateNavbar();
   </script>
-  <script src="/api/static/js/app.js?v=2"></script>
+  <script src="/api/static/js/app.js?v=5"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

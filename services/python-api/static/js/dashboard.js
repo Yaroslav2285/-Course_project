@@ -1,6 +1,7 @@
 // LR #6: Web/DB — Dashboard logic with escrow state machine
 // LR #10: Multi-lang/REST — escrow proxy calls with idempotency
 // LR #12: AI Integration — role-based UI, debounce, optimistic updates
+// LR #15: Security/UX — Escape key, double-click protection, focus trap
 
 var serviceCache = {};
 var serviceData = [];
@@ -33,6 +34,26 @@ function showSkeleton(parent, rows) {
       + '</tr>';
   }
   parent.innerHTML = html;
+}
+
+var _svcModalTrigger = null;
+
+function _serviceModalClose() {
+  closeServiceModal();
+}
+
+function _svcFocusTrap(modalEl, event) {
+  var focusable = modalEl.querySelectorAll('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+  if (focusable.length === 0) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (event.key === 'Tab') {
+    if (event.shiftKey) {
+      if (document.activeElement === first) { event.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+  }
 }
 
 function debounceClick(fn) {
@@ -127,11 +148,11 @@ async function renderClientOrders(tbody, orders) {
   orders.forEach(function (o) {
     var actions = clientActions(o.status, o.id);
     html += '<tr>'
-      + '<td class="order-service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
-      + '<td class="order-amount">' + formatPrice(o.amount) + '</td>'
-      + '<td><span id="badge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
-      + '<td class="order-date">' + formatDate(o.created_at) + '</td>'
-      + '<td class="order-actions" id="actions-' + o.id + '">' + actions + '</td>'
+      + '<td class="order-service" data-label="Service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
+      + '<td data-label="Status"><span id="badge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
+      + '<td class="order-actions" id="actions-' + o.id + '" data-label="Actions">' + actions + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
@@ -185,10 +206,10 @@ function initMyServices() {
       services.forEach(function (s) {
         serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
         var idx = serviceData.length - 1;
-        html += '<tr><td class="order-service">' + escapeHtml(s.title) + '</td>'
-          + '<td class="order-amount">' + formatPrice(s.price) + '</td>'
-          + '<td>' + statusBadge(s.status) + '</td>'
-          + '<td class="order-actions">'
+        html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
+          + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
+          + '<td data-label="Status">' + statusBadge(s.status) + '</td>'
+          + '<td class="order-actions" data-label="Actions">'
           + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
           + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
           + '</td></tr>';
@@ -251,11 +272,11 @@ async function renderIncomingOrders(tbody, orders) {
   orders.forEach(function (o) {
     var actions = executorActions(o.status, o.id);
     html += '<tr>'
-      + '<td class="order-service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
-      + '<td class="order-amount">' + formatPrice(o.amount) + '</td>'
-      + '<td><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
-      + '<td class="order-date">' + formatDate(o.created_at) + '</td>'
-      + '<td class="order-actions" id="eactions-' + o.id + '">' + actions + '</td>'
+      + '<td class="order-service" data-label="Service">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+      + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
+      + '<td data-label="Status"><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
+      + '<td class="order-actions" id="eactions-' + o.id + '" data-label="Actions">' + actions + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
@@ -397,29 +418,66 @@ function updateOrderStatusUI(orderId, newStatus) {
 
 // ===== Service CRUD (Executor) =====
 function openCreateServiceModal() {
+  _svcModalTrigger = document.activeElement;
   document.getElementById('modal-title').textContent = 'Create Service';
   document.getElementById('svc-id').value = '';
   document.getElementById('svc-title').value = '';
   document.getElementById('svc-desc').value = '';
   document.getElementById('svc-price').value = '';
   document.getElementById('svc-status').value = 'draft';
-  document.getElementById('service-modal').classList.remove('hidden');
+  var modal = document.getElementById('service-modal');
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  var titleInput = document.getElementById('svc-title');
+  if (titleInput) titleInput.focus();
+
+  var keyHandler = function (e) {
+    if (e.key === 'Escape') { closeServiceModal(); return; }
+    if (e.key === 'Tab') { _svcFocusTrap(modal, e); }
+  };
+  modal._svcKeyHandler = keyHandler;
+  document.addEventListener('keydown', keyHandler);
 }
 
 function closeServiceModal() {
-  document.getElementById('service-modal').classList.add('hidden');
+  var modal = document.getElementById('service-modal');
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+
+  if (modal._svcKeyHandler) {
+    document.removeEventListener('keydown', modal._svcKeyHandler);
+    delete modal._svcKeyHandler;
+  }
+
+  if (_svcModalTrigger && typeof _svcModalTrigger.focus === 'function') {
+    _svcModalTrigger.focus();
+  }
+  _svcModalTrigger = null;
 }
 
 function editServiceByIndex(idx) {
   var d = serviceData[idx];
   if (!d) return;
+  _svcModalTrigger = document.activeElement;
   document.getElementById('modal-title').textContent = 'Edit Service';
   document.getElementById('svc-id').value = d.id;
   document.getElementById('svc-title').value = d.title;
   document.getElementById('svc-desc').value = d.desc;
   document.getElementById('svc-price').value = d.price;
   document.getElementById('svc-status').value = d.status;
-  document.getElementById('service-modal').classList.remove('hidden');
+  var modal = document.getElementById('service-modal');
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+
+  var keyHandler = function (e) {
+    if (e.key === 'Escape') { closeServiceModal(); return; }
+    if (e.key === 'Tab') { _svcFocusTrap(modal, e); }
+  };
+  modal._svcKeyHandler = keyHandler;
+  document.addEventListener('keydown', keyHandler);
+
+  var titleInput = document.getElementById('svc-title');
+  if (titleInput) titleInput.focus();
 }
 
 async function saveService() {
@@ -430,6 +488,10 @@ async function saveService() {
   var status = document.getElementById('svc-status').value;
   if (!title) { showAlert('Title is required', 'error'); return; }
   if (!price || isNaN(price) || parseFloat(price) <= 0) { showAlert('Valid price is required', 'error'); return; }
+
+  var saveBtn = document.querySelector('#service-modal .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
   try {
     if (id) {
       await apiUpdateService(id, { title: title, description: desc || null, price: price, status: status });
@@ -442,6 +504,7 @@ async function saveService() {
     initMyServices();
   } catch (err) {
     showAlert(err.message, 'error');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
   }
 }
 
