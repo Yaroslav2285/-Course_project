@@ -1,0 +1,217 @@
+/* LR #14: Blockchain audit UI — Phase 7.4 */
+
+.audit-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.audit-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--text-primary, #cdd6f4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-integrity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.audit-integrity-badge.valid {
+  background: rgba(166, 227, 161, 0.15);
+  color: #a6e3a1;
+  border: 1px solid rgba(166, 227, 161, 0.3);
+}
+
+.audit-integrity-badge.invalid {
+  background: rgba(243, 139, 168, 0.15);
+  color: #f38ba8;
+  border: 1px solid rgba(243, 139, 168, 0.3);
+}
+
+.audit-integrity-badge.unknown {
+  background: rgba(148, 226, 213, 0.15);
+  color: #94e2d5;
+  border: 1px solid rgba(148, 226, 213, 0.3);
+}
+
+/* Chain blocks */
+.chain-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chain-block {
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border-color, #313244);
+  border-radius: 10px;
+  padding: 16px;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+.chain-block:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.chain-block.integrity-valid {
+  border-left: 3px solid #a6e3a1;
+}
+
+.chain-block.integrity-invalid {
+  border-left: 3px solid #f38ba8;
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.block-index {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--accent, #89b4fa);
+}
+
+.block-timestamp {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a6adc8);
+}
+
+.block-data {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.block-data dt {
+  color: var(--text-secondary, #a6adc8);
+  font-weight: 500;
+}
+
+.block-data dd {
+  color: var(--text-primary, #cdd6f4);
+  margin: 0;
+  word-break: break-all;
+}
+
+.block-hash {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card, #181825);
+  border-radius: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a6adc8);
+  word-break: break-all;
+}
+
+.block-hash .hash-value {
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.block-hash .hash-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted, #585b70);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.btn-copy-hash {
+  background: none;
+  border: 1px solid var(--border-color, #313244);
+  color: var(--text-secondary, #a6adc8);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.btn-copy-hash:hover {
+  background: var(--border-color, #313244);
+  color: var(--text-primary, #cdd6f4);
+}
+
+/* Block connector arrow */
+.block-connector {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+  color: var(--border-color, #313244);
+  font-size: 1.2rem;
+}
+
+.block-connector .connector-valid {
+  color: #a6e3a1;
+}
+
+.block-connector .connector-invalid {
+  color: #f38ba8;
+}
+
+/* Audit skeleton */
+.audit-skeleton {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.audit-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary, #a6adc8);
+}
+
+.audit-empty .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.audit-error {
+  text-align: center;
+  padding: 32px 24px;
+}
+
+@media (max-width: 600px) {
+  .block-data {
+    grid-template-columns: 1fr;
+  }
+
+  .block-hash {
+    flex-wrap: wrap;
+  }
+
+  .audit-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

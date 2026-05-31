@@ -1,0 +1,223 @@
+/* LR #14: Escrow state-machine timeline — Phase 7.4 */
+
+.escrow-panel {
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border-color, #313244);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.escrow-panel.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.escrow-panel h3 {
+  margin: 0 0 16px;
+  font-size: 1.2rem;
+  color: var(--text-primary, #cdd6f4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Escrow status badge (large version for detail page) */
+.escrow-badge-lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Timeline */
+.escrow-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 32px;
+}
+
+.escrow-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--border-color, #313244);
+}
+
+.escrow-step {
+  position: relative;
+  padding: 8px 0 8px 16px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.escrow-step::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border-color, #313244);
+  border: 2px solid var(--bg-secondary, #1e1e2e);
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.escrow-step.active::before {
+  background: var(--accent, #89b4fa);
+  box-shadow: 0 0 8px rgba(137, 180, 250, 0.5);
+}
+
+.escrow-step.completed::before {
+  background: var(--success, #a6e3a1);
+  box-shadow: 0 0 6px rgba(166, 227, 161, 0.4);
+}
+
+.escrow-step.completed .step-label {
+  opacity: 0.7;
+}
+
+.escrow-step.disputed::before {
+  background: var(--danger, #f38ba8);
+  box-shadow: 0 0 8px rgba(243, 139, 168, 0.5);
+}
+
+.escrow-step.resolved::before {
+  background: var(--warning, #f9e2af);
+  box-shadow: 0 0 6px rgba(249, 226, 175, 0.4);
+}
+
+.step-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary, #cdd6f4);
+}
+
+.step-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a6adc8);
+  margin-top: 2px;
+}
+
+/* Escrow actions area */
+.escrow-actions {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #313244);
+}
+
+.escrow-actions .btn-action {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.escrow-actions .btn-action:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.escrow-actions .btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-escrow-fund {
+  background: var(--accent, #89b4fa);
+  color: #1e1e2e;
+}
+
+.btn-escrow-advance {
+  background: var(--warning, #f9e2af);
+  color: #1e1e2e;
+}
+
+.btn-escrow-complete {
+  background: var(--success, #a6e3a1);
+  color: #1e1e2e;
+}
+
+.btn-escrow-release {
+  background: var(--success, #a6e3a1);
+  color: #1e1e2e;
+}
+
+.btn-escrow-dispute {
+  background: var(--danger, #f38ba8);
+  color: #1e1e2e;
+}
+
+.btn-escrow-resolve {
+  background: var(--warning, #f9e2af);
+  color: #1e1e2e;
+}
+
+/* Skeleton loading */
+.escrow-panel-skeleton {
+  padding: 24px;
+  margin-top: 20px;
+  border-radius: 12px;
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border-color, #313244);
+}
+
+/* Escrow info row */
+.escrow-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.escrow-info-item {
+  padding: 12px;
+  background: var(--bg-card, #181825);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #313244);
+}
+
+.escrow-info-item .label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a6adc8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.escrow-info-item .value {
+  font-size: 1rem;
+  color: var(--text-primary, #cdd6f4);
+  font-weight: 600;
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .escrow-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Toast adjustments for escrow errors — ensure visibility */
+.toast-container {
+  z-index: 10000;
+}
