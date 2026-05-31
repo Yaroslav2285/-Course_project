@@ -269,6 +269,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.service-card-footer .product-add-btn {
+  margin-left: auto;
 }
 
 .service-card-price {
@@ -510,7 +515,6 @@
 
   .service-card-footer {
     padding: 6px 10px 10px;
-    flex-wrap: wrap;
   }
 
   .service-card-price {
