@@ -556,62 +556,49 @@ get `/services/my` возвращал только 20 товаров (дефол
 | POST | `/admin/disputes/{id}/release` | Разрешить спор в пользу продавца (→ released) |
 | POST | `/admin/disputes/{id}/refund` | Разрешить спор в пользу покупателя (→ resolved_refund) |
 
-### Phase 9 — Blockchain integration (Plan)
+### Phase 9 — Blockchain visibility (current blockchain-sim integration)
 
-**Мотивация:** текущий blockchain-sim только логирует события (аудит-трейл), но не влияет на финансовую логику. Go escrow не верифицирует on-chain статус. Для реального escrow нужны смарт-контракты.
+**Реализовано (без Solidity/Ethereum):**
 
-**План архитектуры:**
+1. **`blockchain_verified` поле** (`schemas/orders.py`, `api/v1/orders.py`, `api/v1/admin.py`) — добавлено в `OrderRead`. `_order_to_dict()` стал async: для непендинговых заказов вызывает `_check_blockchain_audit()` (HTTP к `blockchain-sim:8082` с in-memory кешем). В тестах `TESTING=1` отключает HTTP.
+2. **Dashboard 🔗 колонка** (`static/js/dashboard.js`, `static/css/dashboard.css`, шаблоны) — `blockchainBadge()` отображает ✅ (верифицирован), ❌ (не найден), ⚪ (pending/created — ещё нет записи). Добавлена в `renderClientOrders()`, `renderIncomingOrders()`, `showSkeleton()`.
+3. **Escrow panel индикатор** (`static/js/escrow-panel.js`, `dashboard.css`) — `renderBlockchainIndicator()` показывает ✅/❌ бейдж с числом блоков и хешем последнего. Обновляется после каждого escrow-действия. Старая ссылка на `/audit/{id}` убрана.
+4. **Исправление парсинга ответа** (`api/v1/orders.py`) — blockchain-sim возвращает плоский JSON-массив на 200, не `{"blocks": [...]}`.
+5. **Исправление cancelled** — отменённые заказы показывают реальный статус (✅/❌), а не ⚪.
+6. **Fix: новые заказы не появлялись в таблице** (`repositories/orders.py`) — `RepositoryBase.list()` не имел `ORDER BY`, PostgreSQL возвращал строки в неопределённом порядке, и новые заказы могли оказаться на offset>=50 (вне первой страницы). Добавлен `_list_ordered()` с `ORDER BY created_at DESC`.
+
+**Файлы:**
+- `services/python-api/schemas/orders.py` — `blockchain_verified: bool = False`
+- `services/python-api/api/v1/orders.py` — `_check_blockchain_audit()`, async `_order_to_dict()`
+- `services/python-api/api/v1/admin.py` — async `_order_to_dict` с `blockchain_verified`
+- `services/python-api/repositories/orders.py` — `_list_ordered()` с сортировкой
+- `services/python-api/static/js/dashboard.js` — `blockchainBadge()`, 🔗 колонка
+- `services/python-api/static/js/escrow-panel.js` — `renderBlockchainIndicator()`
+- `services/python-api/static/css/dashboard.css` — стили `.blockchain-indicator`, `.bc-cell`, `.bc-verified`
+- `services/python-api/templates/dashboard_client.html`, `dashboard_executor.html` — `<th>🔗</th>`
+
+**Ветка:** `step_9`
+
+**План будущей архитекутры (Phase 9 full — Solidity/Ethereum):**
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Frontend (MetaMask / Web3)                              │
-│   - Подписание транзакций в браузере                     │
-│   - Отображение on-chain статуса                         │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
 │ Solidity Smart Contracts (Ethereum)                      │
-│   EscrowFactory.sol         — создание escrow-контрактов │
-│   MarketplaceEscrow.sol     — эскроу с state-machine     │
-│   DisputeResolver.sol       — разрешение споров          │
-│   EscrowToken.sol           — ERC-20 для платежей        │
+│   EscrowFactory.sol, MarketplaceEscrow.sol,              │
+│   DisputeResolver.sol, EscrowToken.sol                   │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│ Go Escrow (on-chain settlement)                          │
-│   Ethereum client (go-ethereum)                          │
-│   Event listener (NewEscrow, Funded, Released, Disputed) │
-│   Gas optimization (batch, EIP-1559)                     │
+│ Go Escrow (on-chain settlement, go-ethereum)             │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│ Python API (audit hooks)                                 │
-│   Web3.py для чтения on-chain статуса                    │
-│   Синхронизация order.status с контрактом                │
-│   Admin панель — on-chain верификация                    │
+│ Python API (Web3.py audit hooks)                         │
 └─────────────────────────────────────────────────────────┘
 ```
-
-**Roadmap:**
-
-| Фаза | Задача | Описание |
-|---|---|---|
-| **9.1** | Solidity проект | Hardhat/Truffle,编译, тесты |
-| **9.2** | EscrowFactory | createEscrow(), escrowIndex, event NewEscrow |
-| **9.3** | MarketplaceEscrow | state-machine (Created→Funded→InProgress→Completed→Released/Disputed), onlyOwner/onlyBuyer/onlySeller guards |
-| **9.4** | DisputeResolver | vote(), resolve(), onlyAdmin, timelock |
-| **9.5** | Go Ethereum client | go-ethereum bindings, event subscription, tx sending |
-| **9.6** | Go on-chain settlement | Fund (deposit), Release (payout), Cancel (refund), Dispute (freeze) |
-| **9.7** | Gas optimization | batch transactions, EIP-1559 fee estimation, fallback to off-chain |
-| **9.8** | Python Web3 hooks | read on-chain status, verify contract state, sync orders |
-| **9.9** | Frontend MetaMask | Web3Provider, wallet connect, tx signing, status display |
-| **9.10** | E2E tests | local Hardhat node + Docker Compose, full on-chain cycle |
-
-**Ключевые решения:**
-- Контракты на Solidity ^0.8.20 (ReentrancyGuard, OpenZeppelin)
-- Go использует `go-ethereum` (geth) для JSON-RPC взаимодействия
-- Fallback на off-chain (текущая логика) при недоступности сети
-- Admin panel показывает on-chain статус (block number, tx hash, confirmations)
-- ERC-20 токен для платежей (избежать нативной валюты)
 
 ## Текущее состояние
 
@@ -639,6 +626,10 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ✅ Release payout — escrow holding → seller (через proxy + fallback)
 - ✅ Cancel refund — escrow → buyer + **Go cancel_escrow** (если escrow существует)
 - ✅ Blockchain audit trail — `/audit/{order_id}` с SHA-256 верификацией
+- ✅ Blockchain indicator in escrow panel — ✅/❌ бейдж с числом блоков и хешем, обновляется после действий
+- ✅ Dashboard 🔗 column — `blockchainBadge()` показывает ✅/❌/⚪ для каждого заказа
+- ✅ `blockchain_verified` поле в API — `OrderRead.blockchain_verified: bool`, заполняется async HTTP к `blockchain-sim:8082`
+- ✅ **Fix: новые заказы отображаются** — добавлен `ORDER BY created_at DESC` в `OrderRepository`
 - ✅ Cache-busting — `?v=N` на всех CSS/JS
 - ✅ Navbar — статический HTML с JS-переключением между гостем и user
 - ✅ Footer — copyright на всех страницах, прижат к низу
@@ -648,7 +639,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
 - ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
 - ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_8`
-- ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша (Ctrl+Shift+R). Предположительная причина: race condition в DOM-обновлении после закрытия модалки или скрытый кеш браузера. Добавлены Cache-Control, async/await, replaceChild — требуется тест.
+- ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша (Ctrl+Shift+R). Добавлены Cache-Control, async/await, replaceChild — не помогло. Требуется дальнейшая диагностика.
 - ❌ **Admin login** — `admin@marketplace.local` не работает из-за Pydantic EmailStr валидации (.local домен). Использовать `testadmin@gmail.com / admin123!` или исправить валидатор.
 
 **Тесты:**
