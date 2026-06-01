@@ -1057,3 +1057,14 @@ tr:hover td {
     padding: 8px 12px;
   }
 }
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover {
+  color: var(--primary-color);
+}
+.sort-arrow {
+  font-size: 0.75rem;
+}

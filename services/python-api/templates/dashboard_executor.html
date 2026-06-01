@@ -52,10 +52,10 @@
         <thead>
           <tr>
             <th scope="col">Product</th>
-            <th scope="col">Amount</th>
-            <th scope="col">Status</th>
+            <th scope="col" data-sort="amount" class="sortable" onclick="toggleIncomingSort('amount')">Amount <span class="sort-arrow"></span></th>
+            <th scope="col" data-sort="status" class="sortable" onclick="toggleIncomingSort('status')">Status <span class="sort-arrow"></span></th>
             <th scope="col">🔗</th>
-            <th scope="col">Date</th>
+            <th scope="col" data-sort="date" class="sortable" onclick="toggleIncomingSort('date')">Date <span class="sort-arrow"></span></th>
             <th scope="col">Actions</th>
           </tr>
         </thead>

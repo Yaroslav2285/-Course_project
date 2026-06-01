@@ -9,6 +9,39 @@ var serviceData = [];
 var _allServices = [];
 var _actionInProgress = {};
 
+var _clientSort = { field: 'date', dir: 'desc' };
+var _incomingSort = { field: 'date', dir: 'desc' };
+var _clientOrdersData = [];
+var _incomingOrdersData = [];
+
+function _sortOrders(orders, field, dir) {
+  var arr = orders.slice();
+  arr.sort(function (a, b) {
+    var va, vb;
+    switch (field) {
+      case 'amount': va = parseFloat(a.amount); vb = parseFloat(b.amount); break;
+      case 'status': va = (a.status || '').toLowerCase(); vb = (b.status || '').toLowerCase(); break;
+      case 'date': default: va = new Date(a.created_at); vb = new Date(b.created_at); break;
+    }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return arr;
+}
+
+function _updateSortArrows(container, field, dir) {
+  container.querySelectorAll('.sortable').forEach(function (th) {
+    var arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    if (th.getAttribute('data-sort') === field) {
+      arrow.textContent = dir === 'asc' ? ' ▲' : ' ▼';
+    } else {
+      arrow.textContent = '';
+    }
+  });
+}
+
 // ===== Helpers =====
 async function fetchServiceTitle(id) {
   if (!id) return '...';
@@ -109,16 +142,19 @@ function initClientDashboard() {
     apiFetchOrders(50, 0)
       .then(function (res) {
         console.log('Dashboard: orders received', res);
-        var orders = (res.data || []).sort(function (a, b) {
-          return new Date(b.created_at) - new Date(a.created_at);
-        });
+        var orders = res.data || [];
+        _clientOrdersData = orders;
+        var sorted = _sortOrders(orders, _clientSort.field, _clientSort.dir);
         loadEl.style.display = 'none';
         if (!orders.length) {
           if (emptyEl) emptyEl.style.display = 'block';
           return;
         }
-        return renderClientOrders(tbody, orders).then(function () {
-          if (tableEl) tableEl.style.display = 'block';
+        return renderClientOrders(tbody, sorted).then(function () {
+          if (tableEl) {
+            tableEl.style.display = 'block';
+            _updateSortArrows(tableEl, _clientSort.field, _clientSort.dir);
+          }
         });
       })
       .catch(function (err) {
@@ -149,6 +185,38 @@ function blockchainBadge(verified, status) {
   }
   if (verified) return '<span class="bc-verified" title="Blockchain verified">&#9989;</span>';
   return '<span class="bc-unverified" title="Not on blockchain">&#10060;</span>';
+}
+
+function toggleClientSort(field) {
+  if (_clientSort.field === field) {
+    _clientSort.dir = _clientSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _clientSort.field = field;
+    _clientSort.dir = 'asc';
+  }
+  var tableWrapper = document.getElementById('orders-table-wrapper');
+  if (tableWrapper) _updateSortArrows(tableWrapper, field, _clientSort.dir);
+  var tbody = document.getElementById('orders-tbody');
+  if (tbody) {
+    var sorted = _sortOrders(_clientOrdersData, _clientSort.field, _clientSort.dir);
+    renderClientOrders(tbody, sorted);
+  }
+}
+
+function toggleIncomingSort(field) {
+  if (_incomingSort.field === field) {
+    _incomingSort.dir = _incomingSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _incomingSort.field = field;
+    _incomingSort.dir = 'asc';
+  }
+  var tableWrapper = document.getElementById('incoming-table-wrapper');
+  if (tableWrapper) _updateSortArrows(tableWrapper, field, _incomingSort.dir);
+  var tbody = document.getElementById('incoming-tbody');
+  if (tbody) {
+    var sorted = _sortOrders(_incomingOrdersData, _incomingSort.field, _incomingSort.dir);
+    renderIncomingOrders(tbody, sorted);
+  }
 }
 
 async function renderClientOrders(tbody, orders) {
@@ -295,9 +363,8 @@ function loadIncomingOrders() {
     .then(function (res) {
       var orders = (res.data || []);
       console.log('[incoming] received', orders.length, 'orders');
-      orders.sort(function (a, b) {
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
+      _incomingOrdersData = orders;
+      var sorted = _sortOrders(orders, _incomingSort.field, _incomingSort.dir);
       var total = res.meta ? res.meta.total : orders.length;
       var countEl = document.getElementById('incoming-count');
       if (countEl) countEl.textContent = '(' + total + ')';
@@ -307,10 +374,13 @@ function loadIncomingOrders() {
         if (emptyEl) emptyEl.style.display = 'block';
         return;
       }
-      console.log('[incoming] rendering', orders.length, 'orders');
-      return renderIncomingOrders(tbody, orders).then(function () {
+      console.log('[incoming] rendering', sorted.length, 'orders');
+      return renderIncomingOrders(tbody, sorted).then(function () {
         console.log('[incoming] render done, showing table');
-        if (tableEl) tableEl.style.display = 'block';
+        if (tableEl) {
+          tableEl.style.display = 'block';
+          _updateSortArrows(tableEl, _incomingSort.field, _incomingSort.dir);
+        }
       });
     })
     .catch(function (err) {
@@ -333,9 +403,9 @@ function refreshIncomingOrders() {
 
   apiFetchSoldOrders(100)
     .then(function (res) {
-      var orders = (res.data || []).sort(function (a, b) {
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
+      var orders = (res.data || []);
+      _incomingOrdersData = orders;
+      var sorted = _sortOrders(orders, _incomingSort.field, _incomingSort.dir);
       var total = res.meta ? res.meta.total : orders.length;
       var countEl = document.getElementById('incoming-count');
       if (countEl) countEl.textContent = '(' + total + ')';
@@ -345,11 +415,11 @@ function refreshIncomingOrders() {
       var currentHtml = tbody.innerHTML;
       var newHtml = '';
       var titles = {};
-      var pending = orders.map(function (o) {
+      var pending = sorted.map(function (o) {
         return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
       });
       Promise.all(pending).then(function () {
-        orders.forEach(function (o) {
+        sorted.forEach(function (o) {
           var actions = executorActions(o.status, o.id);
           newHtml += '<tr>'
             + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
