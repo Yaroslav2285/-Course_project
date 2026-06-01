@@ -51,7 +51,7 @@ async def _order_to_dict(order: Order) -> dict:
     d = OrderRead.model_validate(order).model_dump()
     d["seller_email"] = order.seller.email if order.seller else None
     d["buyer_email"] = order.buyer.email if order.buyer else None
-    if order.status not in ("pending", "cancelled", "created"):
+    if order.status not in ("pending", "created"):
         d["blockchain_verified"] = await _check_blockchain_audit(str(order.id))
     return d
 

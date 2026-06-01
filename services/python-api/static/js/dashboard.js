@@ -143,7 +143,7 @@ function initClientDashboard() {
 }
 
 function blockchainBadge(verified, status) {
-  if (status === 'pending' || status === 'cancelled' || status === 'created') {
+  if (status === 'pending' || status === 'created') {
     return '<span class="bc-unknown" title="No blockchain records yet">&#9899;</span>';
   }
   if (verified) return '<span class="bc-verified" title="Blockchain verified">&#9989;</span>';
