@@ -19,6 +19,13 @@ from schemas.users import UserRead
 router = APIRouter()
 
 
+def _order_to_dict(order: Order) -> dict:
+    d = OrderRead.model_validate(order).model_dump()
+    d["seller_email"] = order.seller.email if order.seller else None
+    d["buyer_email"] = order.buyer.email if order.buyer else None
+    return d
+
+
 @router.get("/debug", response_model=dict)
 async def debug_orders(
     current_user: UserRead = Depends(get_current_user),
@@ -71,7 +78,7 @@ async def list_orders(
         filtered = [o for o in items if o.status == status]
         total = len(filtered)
         items = filtered[offset : offset + limit]
-    order_list = [OrderRead.model_validate(o).model_dump() for o in items]
+    order_list = [_order_to_dict(o) for o in items]
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
@@ -96,7 +103,7 @@ async def list_sold_orders(
         filtered = [o for o in items if o.status == status]
         total = len(filtered)
         items = filtered[offset : offset + limit]
-    order_list = [OrderRead.model_validate(o).model_dump() for o in items]
+    order_list = [_order_to_dict(o) for o in items]
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
@@ -110,7 +117,7 @@ async def get_order(
     order = await repo.get_by_id(order_id)
     if not order:
         raise NotFoundException("Order not found")
-    return success_response(data=OrderRead.model_validate(order).model_dump())
+    return success_response(data=_order_to_dict(order))
 
 
 @router.post("/", response_model=dict, status_code=201)
@@ -127,7 +134,7 @@ async def create_order(
         amount=str(payload.amount),
         notes=payload.notes,
     )
-    return success_response(data=OrderRead.model_validate(order).model_dump())
+    return success_response(data=_order_to_dict(order))
 
 
 @router.patch("/{order_id}/status", response_model=dict)
@@ -177,4 +184,4 @@ async def update_order_status(
         except ValueError:
             pass
 
-    return success_response(data=OrderRead.model_validate(updated).model_dump())
+    return success_response(data=_order_to_dict(updated))

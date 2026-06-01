@@ -26,6 +26,7 @@ class ServiceUpdate(BaseModel):
 class ServiceRead(BaseModel):
     id: UUID
     provider_id: UUID
+    provider_email: str | None = None
     title: str
     description: str | None
     price: Decimal

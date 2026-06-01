@@ -259,7 +259,7 @@ function renderCards(services) {
       '<span class="product-rating-score">' + mock.rating.toFixed(1) + '</span>' +
       '<span class="product-rating-count">(' + mock.reviews + ')</span>' +
       '</div>' +
-      '<div class="product-seller">by <strong>' + escapeHtml(mock.seller) + '</strong></div>' +
+      '<div class="product-seller">by <strong>' + escapeHtml(s.provider_email || mock.seller) + '</strong></div>' +
       '</div>' +
       '<div class="service-card-footer">' +
       '<div class="service-card-price">' +

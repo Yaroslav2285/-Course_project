@@ -31,7 +31,11 @@ async def list_services(
     else:
         filters["status"] = ServiceStatus.published.value
     items, total = await repo.list(limit=limit, offset=offset, **filters)
-    service_list = [ServiceRead.model_validate(s).model_dump() for s in items]
+    service_list = []
+    for s in items:
+        d = ServiceRead.model_validate(s).model_dump()
+        d["provider_email"] = s.provider.email if s.provider else None
+        service_list.append(d)
     return success_response(data=service_list, total=total, limit=limit, offset=offset)
 
 
@@ -46,7 +50,11 @@ async def list_my_services(
     items, total = await repo.list_by_provider(
         provider_id=current_user.id, limit=limit, offset=offset
     )
-    service_list = [ServiceRead.model_validate(s).model_dump() for s in items]
+    service_list = []
+    for s in items:
+        d = ServiceRead.model_validate(s).model_dump()
+        d["provider_email"] = s.provider.email if s.provider else None
+        service_list.append(d)
     return success_response(data=service_list, total=total, limit=limit, offset=offset)
 
 
@@ -59,7 +67,9 @@ async def get_service(
     service = await repo.get_by_id(service_id)
     if not service:
         raise NotFoundException("Service not found")
-    return success_response(data=ServiceRead.model_validate(service).model_dump())
+    d = ServiceRead.model_validate(service).model_dump()
+    d["provider_email"] = service.provider.email if service.provider else None
+    return success_response(data=d)
 
 
 @router.post("/", response_model=dict, status_code=201)

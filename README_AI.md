@@ -405,6 +405,38 @@ services/python-api/
 - `static/js/wallet.js` — убрана привязка к роли `client` (теперь для всех аутентифицированных); добавлен `renderWalletBalanceFallback()`
 - `templates/wallet.html`, `templates/dashboard_client.html`, `templates/dashboard_executor.html` — защищённый вызов `if (typeof initWallet === 'function')`
 
+### Phase 7.7b — provider_email в карточках каталога
+
+**Проблема:** в карточках товаров отображалось мок-имя продавца вместо реального email.
+
+**Решение:**
+1. **`ServiceRead.provider_email`** — добавлено поле `str | None = None` в Pydantic схему.
+2. **Все `GET /services/` эндпоинты** — после `model_validate()` заполняют `provider_email` из `service.provider.email`.
+3. **catalog.js** — `s.provider_email || mock.seller` — отображает реальный email, с fallback на мок.
+
+**Файлы:**
+- `schemas/services.py` — `provider_email` поле
+- `api/v1/services.py` — 3 эндпоинта с `d["provider_email"] = s.provider.email`
+- `static/js/catalog.js` — отображение в карточке
+
+### Phase 7.8 — seller_email/buyer_email в деталях заказа
+
+**Проблема:** на странице деталей заказа (`/orders/{id}`) не отображался продавец (seller).
+
+**Решение:**
+1. **`OrderRead.seller_email` + `OrderRead.buyer_email`** — добавлены `str | None = None` в Pydantic схему.
+2. **`_order_to_dict(order)` helper** — `orders.py`: заполняет email-ы из `order.seller.email` / `order.buyer.email` после валидации Pydantic.
+3. **Все 5 эндпоинтов orders** — используют `_order_to_dict()` вместо прямого `model_validate().model_dump()`.
+4. **escrow-panel.js** — в `order-info-grid` добавлены строки Seller и Buyer с email-ами.
+
+**Файлы:**
+- `schemas/orders.py` — `seller_email`, `buyer_email` поля
+- `api/v1/orders.py` — `_order_to_dict()` helper, обновлены все эндпоинты
+- `static/js/escrow-panel.js` — отображение в info grid
+- `templates/order_detail.html` — cache-bust `escrow-panel.js?v=11`
+
+**Тесты:** без изменений (53/53, новых тестов не требуется — существующие проверяют OrderRead).
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -417,11 +449,11 @@ services/python-api/
 | marketplace_blockchain_sim | 8082 | ✅ healthy |
 
 **Frontend:**
-- ✅ Catalog page — filter/search/sort/pagination работают
+- ✅ Catalog page — filter/search/sort/pagination работают; отображается реальный email продавца
 - ✅ Auth flow — register → login → role-based redirect (client→/dashboard/client, provider→/dashboard/executor)
 - ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}, карточка баланса с автобновлением после release/cancel
 - ✅ Executor dashboard — табы: My Services (CRUD) + Incoming Orders, карточка баланса с автобновлением после release/cancel
-- ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel)
+- ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel); отображает Seller и Buyer email
 - ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация, автообновление после release/cancel
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
 - ✅ Escrow proxy — `/v1/escrow/:order_id/:action` с Go-first → fallback на PATCH
@@ -483,6 +515,7 @@ services/python-api/
 20. **`WalletRepository.transfer(from_uid, to_uid, amount)`** — атомарный перевод: дебет отправителя + кредит получателя + две транзакции. Используется для escrow fund (buyer→escrow), release (escrow→seller) и cancel refund (escrow→buyer).
 21. **Блокировка роли в initWallet()** — убрана: теперь баланс загружается для всех аутентифицированных пользователей, а не только `client`.
 22. **Wallet на дашборде исполнителя** — добавлен `wallet-card.html` + `initWallet()` на `/dashboard/executor`, чтобы провайдер видел баланс и пополнения.
+23. **`seller_email` / `buyer_email` в OrderRead** — Pydantic-поля `str | None = None`, заполняются через `_order_to_dict()` helper из SQLAlchemy relationship `order.seller.email` / `order.buyer.email`. `from_attributes` не может напрямую читать `order.seller.email`, поэтому используется пост-валидационная вставка — та же техника, что и `provider_email` в ServiceRead.
 
 ## Команды для быстрого старта
 

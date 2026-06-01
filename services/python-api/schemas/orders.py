@@ -28,6 +28,8 @@ class OrderRead(BaseModel):
     service_id: UUID
     buyer_id: UUID
     seller_id: UUID
+    seller_email: str | None = None
+    buyer_email: str | None = None
     amount: Decimal
     status: str
     notes: str | None

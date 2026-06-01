@@ -111,6 +111,8 @@ async function loadEscrowPanel(orderId) {
     var infoGrid = document.getElementById('order-info-grid');
     var infoHtml = ''
       + '<div class="escrow-info-item"><div class="label">Order ID</div><div class="value" style="font-size:0.85rem;font-family:monospace;">' + escapeHtml(orderId) + '</div></div>'
+      + '<div class="escrow-info-item"><div class="label">Seller</div><div class="value">' + escapeHtml(orderData.seller_email || 'N/A') + '</div></div>'
+      + '<div class="escrow-info-item"><div class="label">Buyer</div><div class="value">' + escapeHtml(orderData.buyer_email || 'N/A') + '</div></div>'
       + '<div class="escrow-info-item"><div class="label">Amount</div><div class="value">$' + parseFloat(orderData.amount || 0).toFixed(2) + '</div></div>'
       + '<div class="escrow-info-item"><div class="label">Status</div><div class="value">' + statusBadge(status) + '</div></div>'
       + '<div class="escrow-info-item"><div class="label">Created</div><div class="value">' + formatDate(orderData.created_at) + '</div></div>';
