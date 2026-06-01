@@ -19,6 +19,7 @@ manual.txt
 
 # Coverage & SAST artifacts
 cover
+cover.out
 *-report.json
 
 # Docker
