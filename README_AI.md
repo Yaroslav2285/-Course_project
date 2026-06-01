@@ -600,7 +600,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Phase 10 — Category, Description, Discount, Read-only modal
+### Phase 10 — Category, Description, Discount, Read-only modal, Search, Sort
 
 **Файлы:**
 - `models/services.py` — `category` (String, nullable), `discount` (Integer, nullable)
@@ -611,13 +611,16 @@ get `/services/my` возвращал только 20 товаров (дефол
 - `alembic/versions/b9cc5c4019ff_add_discount_to_services.py` — ADD COLUMN discount (вручную очищена от ложных DROP TABLE)
 - `scripts/seed_categories.py` — назначает категории 35 существующим товарам
 - `static/js/catalog.js` — `s.category` вместо mock, `s.discount` с fallback, бейдж `-X%`, two prices (original strikethrough + discounted), `auth.role !== 'client'` → readOnly modal
-- `static/js/dashboard.js` — svc-category select, svc-discount input, сохранение/восстановление в модалке
+- `static/js/dashboard.js` — svc-category select, svc-discount input, `_allServices` + `filterMyServices()` + `renderFilteredServices()` (поиск по названию); `_sortOrders()` + `toggleClientSort()`/`toggleIncomingSort()` (сортировка заказов); сохранение/восстановление в модалке
 - `static/js/order-modal.js` — `readOnly` параметр: блокировка qty+submit для seller/admin, Unit Price строка
 - `static/js/api.js` — `apiCreateService(title, ..., discount)` — новый параметр discount
 - `static/css/catalog.css` — `.service-card-description` (line-clamp, 80 chars)
+- `static/css/main.css` — `.sortable`, `.sort-arrow`, `.sort-arrow.active` (стили сортируемых заголовков)
 - `templates/catalog.html` — sidebar category filter `<select>`, description в карточке
-- `templates/dashboard_executor.html` — `<select id="svc-category">`, `<input id="svc-discount">`
+- `templates/dashboard_executor.html` — `<select id="svc-category">`, `<input id="svc-discount">`, `<input id="svc-search">`; sortable `<th>` для Amount/Status/Date
+- `templates/dashboard_client.html` — sortable `<th>` для Amount/Status/Date
 - `templates/order-modal.html` — description row, Unit Price row
+- `templates/wallet-card.html` — `<option value="card" disabled>Банковская карта (недоступно)</option>`
 
 **Функциональность:**
 1. **Category** — опциональная категория услуги (16 предопределённых опций). Фильтр `?category=` в GET /services/. Сайдбар в каталоге с динамическим `<select>`. Выбор категории при создании/редактировании услуги в dashboard.
@@ -625,6 +628,9 @@ get `/services/my` возвращал только 20 товаров (дефол
 3. **Description + Unit Price in modal** — описание товара и строка Unit Price (с зачёркнутой оригинальной ценой при скидке) в модалке Place Order.
 4. **Discount** — опциональный процент скидки (0–100). В каталоге: бейдж `-X%`, оригинальная цена зачёркнута, discounted цена основная. В order modal: оригинал зачёркнут, discounted для расчёта Total. Fallback на `mock.discount` если `s.discount` не задан.
 5. **Read-only modal** — клик по карточке открывает модалку для всех ролей. Client — полный функционал (submit enabled). Seller/Admin — read-only (qty disabled, submit disabled с сообщением "Only clients can place orders"). Кнопка "Add to Cart" для non-client показывает toast-ошибку.
+6. **Search My Products** — текстовое поле на дашборде исполнителя, фильтрует услуги по названию в реальном времени (client-side).
+7. **Sortable orders** — кликабельные заголовки Amount/Status/Date в таблицах заказов клиента и исполнителя. Первый клик — по возрастанию, второй — по убыванию. Серый `⇅` на неактивных, синий `▲`/`▼` на активной колонке.
+8. **Card method unavailable** — в модалке пополнения кошелька способ "Банковская карта" отображается как disabled с текстом "(недоступно)".
 
 **Ветка:** `step_10`
 
@@ -642,8 +648,8 @@ get `/services/my` возвращал только 20 товаров (дефол
 **Frontend:**
 - ✅ Catalog page — filter/search/sort/pagination работают; отображается реальный email продавца; категории (фильтр в сайдбаре); описание в карточке (80 chars, line-clamp); скидка (бейдж -X%, two prices)
 - ✅ Auth flow — register → login → role-based redirect (client→/dashboard/client, provider→/dashboard/executor); seller/admin видят read-only модалку заказа при клике на карточку
-- ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}, карточка баланса с автобновлением после release/cancel
-- ✅ Executor dashboard — табы: My Services (CRUD + category + discount поля) + Incoming Orders, карточка баланса с автобновлением после release/cancel
+- ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}, карточка баланса с автобновлением после release/cancel; сортировка по Amount/Status/Date (клик на заголовок)
+- ✅ Executor dashboard — табы: My Services (CRUD + category + discount поля + поиск по названию) + Incoming Orders (сортировка по Amount/Status/Date), карточка баланса с автобновлением после release/cancel
 - ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel); отображает Seller и Buyer email; описание товара и Unit Price (зачёркнутый оригинал при скидке)
 - ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация, автообновление после release/cancel
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
