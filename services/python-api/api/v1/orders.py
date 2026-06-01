@@ -33,8 +33,12 @@ async def _check_blockchain_audit(order_id: str) -> bool:
             resp = await client.get(f"http://blockchain-sim:8082/v1/chain/audit/{str_id}")
             if resp.status_code == 200:
                 data = resp.json()
-                blocks = data.get("blocks", [])
-                result = len(blocks) > 0
+                if isinstance(data, list):
+                    result = len(data) > 0
+                elif isinstance(data, dict):
+                    result = len(data.get("blocks", [])) > 0
+                else:
+                    result = False
                 _blockchain_cache[str_id] = result
                 return result
     except Exception:
