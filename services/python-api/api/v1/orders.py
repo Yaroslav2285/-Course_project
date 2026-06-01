@@ -2,7 +2,7 @@
 # LR #4: Async/Web
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -147,6 +147,9 @@ async def update_order_status(
     order = await repo.get_by_id(order_id)
     if not order:
         raise NotFoundException("Order not found")
+
+    if order.status == "disputed" and payload.status not in ("resolved_refund", "resolved_release"):
+        raise HTTPException(status_code=409, detail="Cannot update order status while disputed. Resolve the dispute first.")
 
     prev_status = order.status
     updated = await repo.update_status(order, status=payload.status)

@@ -106,6 +106,9 @@ Redis :6377 — кеширование (зарезервировано)
 | POST | `/v1/wallet/topup` | Пополнение кошелька |
 | POST | `/v1/wallet/pay` | Оплата заказа из кошелька (→funded) |
 | GET | `/v1/wallet/transactions` | История транзакций |
+| GET | `/admin/disputes` | Список споров (admin) |
+| POST | `/admin/disputes/{id}/release` | Разрешить спор → продавцу (admin) |
+| POST | `/admin/disputes/{id}/refund` | Разрешить спор → покупателю (admin) |
 
 **Middleware:**
 - X-Request-ID (проброс + эхо)
@@ -527,6 +530,89 @@ get `/services/my` возвращал только 20 товаров (дефол
 
 **Не решено:** create/delete всё ещё не обновляет список — требуется дальнейшая диагностика.
 
+### Phase 8 — Admin dispute management panel
+
+**Проблема:** администратор не мог видеть и разрешать споры (disputed заказы). `admin@marketplace.local` не проходил Pydantic EmailStr валидацию (`.local` домен).
+
+**Решение:**
+1. **Admin email fix** — создан рабочий администратор `testadmin@gmail.com / admin123!` в БД напрямую.
+2. **Status column fix** — `orders.status` расширен с `varchar(11)` до `varchar(32)` (ALTER TABLE), чтобы `resolved_refund` (14 символов) влезал.
+3. **Admin API endpoint** — `api/v1/admin.py`: `GET /admin/disputes` (список споров), `POST /admin/disputes/{id}/release` (выплата продавцу), `POST /admin/disputes/{id}/refund` (возврат покупателю).
+4. **Emails in API** — `_order_to_dict()` возвращает `buyer_email` и `seller_email` для отображения в админке.
+5. **Dispute reason** — `dispute_escrow` сохраняет reason в `notes`; старые споры заполнены "Disputed by user".
+6. **Admin frontend** — `admin_disputes.html` + `admin-disputes.js`: таблица споров, Details модалка (reason, emails, order info), кнопки Release/Refund с подтверждением, рефреш списка после действия, placeholder для блокчейн-секции.
+
+**Файлы:**
+- `services/python-api/api/v1/admin.py` — 3 эндпоинта админки
+- `services/python-api/templates/admin_disputes.html` — страница управления спорами
+- `services/python-api/static/js/admin-disputes.js` — JS логика
+- `scripts/seed-admin.ps1` — PowerShell скрипт создания админа
+- `scripts/check_disputes.py` — скрипт проверки споров в БД
+
+**API эндпоинты:**
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/admin/disputes` | Список disputed заказов с buyer_email/seller_email |
+| POST | `/admin/disputes/{id}/release` | Разрешить спор в пользу продавца (→ released) |
+| POST | `/admin/disputes/{id}/refund` | Разрешить спор в пользу покупателя (→ resolved_refund) |
+
+### Phase 9 — Blockchain integration (Plan)
+
+**Мотивация:** текущий blockchain-sim только логирует события (аудит-трейл), но не влияет на финансовую логику. Go escrow не верифицирует on-chain статус. Для реального escrow нужны смарт-контракты.
+
+**План архитектуры:**
+```
+┌─────────────────────────────────────────────────────────┐
+│ Frontend (MetaMask / Web3)                              │
+│   - Подписание транзакций в браузере                     │
+│   - Отображение on-chain статуса                         │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│ Solidity Smart Contracts (Ethereum)                      │
+│   EscrowFactory.sol         — создание escrow-контрактов │
+│   MarketplaceEscrow.sol     — эскроу с state-machine     │
+│   DisputeResolver.sol       — разрешение споров          │
+│   EscrowToken.sol           — ERC-20 для платежей        │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│ Go Escrow (on-chain settlement)                          │
+│   Ethereum client (go-ethereum)                          │
+│   Event listener (NewEscrow, Funded, Released, Disputed) │
+│   Gas optimization (batch, EIP-1559)                     │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│ Python API (audit hooks)                                 │
+│   Web3.py для чтения on-chain статуса                    │
+│   Синхронизация order.status с контрактом                │
+│   Admin панель — on-chain верификация                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Roadmap:**
+
+| Фаза | Задача | Описание |
+|---|---|---|
+| **9.1** | Solidity проект | Hardhat/Truffle,编译, тесты |
+| **9.2** | EscrowFactory | createEscrow(), escrowIndex, event NewEscrow |
+| **9.3** | MarketplaceEscrow | state-machine (Created→Funded→InProgress→Completed→Released/Disputed), onlyOwner/onlyBuyer/onlySeller guards |
+| **9.4** | DisputeResolver | vote(), resolve(), onlyAdmin, timelock |
+| **9.5** | Go Ethereum client | go-ethereum bindings, event subscription, tx sending |
+| **9.6** | Go on-chain settlement | Fund (deposit), Release (payout), Cancel (refund), Dispute (freeze) |
+| **9.7** | Gas optimization | batch transactions, EIP-1559 fee estimation, fallback to off-chain |
+| **9.8** | Python Web3 hooks | read on-chain status, verify contract state, sync orders |
+| **9.9** | Frontend MetaMask | Web3Provider, wallet connect, tx signing, status display |
+| **9.10** | E2E tests | local Hardhat node + Docker Compose, full on-chain cycle |
+
+**Ключевые решения:**
+- Контракты на Solidity ^0.8.20 (ReentrancyGuard, OpenZeppelin)
+- Go использует `go-ethereum` (geth) для JSON-RPC взаимодействия
+- Fallback на off-chain (текущая логика) при недоступности сети
+- Admin panel показывает on-chain статус (block number, tx hash, confirmations)
+- ERC-20 токен для платежей (избежать нативной валюты)
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -556,12 +642,14 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ✅ Cache-busting — `?v=N` на всех CSS/JS
 - ✅ Navbar — статический HTML с JS-переключением между гостем и user
 - ✅ Footer — copyright на всех страницах, прижат к низу
+- ✅ **Admin dispute panel** — `/admin/disputes`: таблица споров, Details модалка, Release/Refund кнопки, buyer/seller email, dispute reason
 
 **Известные проблемы:**
 - ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
 - ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
 - ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_8`
 - ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша (Ctrl+Shift+R). Предположительная причина: race condition в DOM-обновлении после закрытия модалки или скрытый кеш браузера. Добавлены Cache-Control, async/await, replaceChild — требуется тест.
+- ❌ **Admin login** — `admin@marketplace.local` не работает из-за Pydantic EmailStr валидации (.local домен). Использовать `testadmin@gmail.com / admin123!` или исправить валидатор.
 
 **Тесты:**
 - Python: 54/54 passed
@@ -650,8 +738,15 @@ curl http://localhost:8000/catalog                    # Catalog page (200)
 curl http://localhost:8000/dashboard/client           # Client dashboard (200)
 curl http://localhost:8000/dashboard/executor         # Executor dashboard (200)
 curl http://localhost:8000/orders/                    # Orders list (200)
+curl http://localhost:8000/admin/disputes              # Admin dispute panel (200)
 curl http://localhost:8000/api/static/css/main.css    # CSS (200)
 curl http://localhost:8000/api/static/js/api.js       # JS (200)
 curl http://localhost:8000/api/static/js/dashboard.js # Dashboard JS (200)
 curl http://localhost:8000/api/v1/services/           # API services (JSON)
+
+# Admin
+curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"testadmin@gmail.com","password":"admin123!"}'
+curl http://localhost:8000/admin/disputes -H "Authorization: Bearer <token>"
+curl -X POST http://localhost:8000/admin/disputes/{id}/release -H "Authorization: Bearer <token>"
+curl -X POST http://localhost:8000/admin/disputes/{id}/refund -H "Authorization: Bearer <token>"
 ```

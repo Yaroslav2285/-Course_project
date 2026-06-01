@@ -282,6 +282,51 @@ func (s *EscrowService) Dispute(ctx context.Context, id uuid.UUID, reason string
 	return account, nil
 }
 
+func (s *EscrowService) Resolve(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	account, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get escrow: %w", err)
+	}
+	if account == nil {
+		return nil, fmt.Errorf("escrow_account not found: %s", id)
+	}
+
+	if !domain.IsValidTransition(account.Status, domain.StatusResolved) {
+		return nil, fmt.Errorf("invalid transition from %s to RESOLVED", account.Status)
+	}
+
+	err = s.withTx(s.db, nil, func(tx *sql.Tx) error {
+		if err := s.repo.UpdateStatus(ctx, tx, id, domain.StatusResolved); err != nil {
+			return err
+		}
+		if err := s.repo.UpdateDisputeStatus(ctx, tx, id, domain.DisputeResolved); err != nil {
+			return err
+		}
+		txn := &domain.Transaction{
+			ID:              uuid.New(),
+			EscrowAccountID: id,
+			OrderID:         account.OrderID,
+			Amount:          account.Balance,
+			TransactionType: domain.TxnResolve,
+			Status:          "completed",
+			CreatedAt:       time.Now().UTC(),
+		}
+		return s.repo.CreateTransaction(ctx, tx, txn)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("resolve escrow: %w", err)
+	}
+
+	account.Status = domain.StatusResolved
+	account.UpdatedAt = time.Now().UTC()
+
+	s.log.Info("escrow resolved", zap.String("id", id.String()))
+
+	go s.emitBlockchainEvent(context.Background(), account, "RESOLVED") // #nosec G118
+
+	return account, nil
+}
+
 func (s *EscrowService) GetByID(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
 	account, err := s.repo.GetByID(ctx, id)
 	if err != nil {

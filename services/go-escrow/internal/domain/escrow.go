@@ -31,7 +31,7 @@ func (s EscrowStatus) String() string {
 var validTransitions = map[EscrowStatus]map[EscrowStatus]bool{
 	StatusCreated:    {StatusFunded: true},
 	StatusFunded:     {StatusInProgress: true, StatusCancelled: true},
-	StatusInProgress: {StatusCompleted: true, StatusCancelled: true},
+	StatusInProgress: {StatusCompleted: true, StatusCancelled: true, StatusDisputed: true},
 	StatusCompleted:  {StatusReleased: true, StatusDisputed: true},
 	StatusDisputed:   {StatusResolved: true},
 }
@@ -60,6 +60,7 @@ const (
 	TxnRelease TransactionType = "RELEASE"
 	TxnCancel  TransactionType = "CANCEL"
 	TxnRefund  TransactionType = "REFUND"
+	TxnResolve TransactionType = "RESOLVE"
 )
 
 type Transaction struct {

@@ -24,6 +24,7 @@ type EscrowRepository interface {
 	UpdateBalanceAndStatus(ctx context.Context, tx *sql.Tx, id uuid.UUID, balance decimal.Decimal, status domain.EscrowStatus) error
 	CreateTransaction(ctx context.Context, tx *sql.Tx, txn *domain.Transaction) error
 	CreateDispute(ctx context.Context, tx *sql.Tx, dispute *domain.Dispute) error
+	UpdateDisputeStatus(ctx context.Context, tx *sql.Tx, escrowAccountID uuid.UUID, status domain.DisputeStatus) error
 	GetTransactionsByEscrowID(ctx context.Context, id uuid.UUID) ([]domain.Transaction, error)
 }
 
@@ -125,6 +126,20 @@ func (r *escrowRepository) CreateDispute(ctx context.Context, tx *sql.Tx, d *dom
 		d.ID, d.OrderID, d.EscrowAccountID, d.Reason, d.Status, d.CreatedAt, d.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("insert dispute: %w", err)
+	}
+	return nil
+}
+
+func (r *escrowRepository) UpdateDisputeStatus(ctx context.Context, tx *sql.Tx, escrowAccountID uuid.UUID, status domain.DisputeStatus) error {
+	query := `UPDATE disputes SET status = $1, updated_at = $2 WHERE escrow_account_id = $3`
+	now := time.Now().UTC()
+	res, err := tx.ExecContext(ctx, query, status, now, escrowAccountID)
+	if err != nil {
+		return fmt.Errorf("update dispute status: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("dispute not found for escrow_account: %s", escrowAccountID)
 	}
 	return nil
 }

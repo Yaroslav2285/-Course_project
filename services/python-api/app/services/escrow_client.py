@@ -107,6 +107,16 @@ class EscrowClient:
             idempotency_key=idempotency_key,
         )
 
+    async def resolve_escrow(
+        self, escrow_id: str, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/v1/escrow/{escrow_id}/resolve",
+            json={},
+            idempotency_key=idempotency_key,
+        )
+
     async def _request(
         self,
         method: str,

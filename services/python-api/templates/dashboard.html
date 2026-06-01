@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var auth = checkAuth();
   if (!auth.isAuthenticated) {
     window.location.href = '/login';
+  } else if (auth.role === 'admin') {
+    window.location.href = '/admin/disputes';
   } else if (auth.role === 'provider') {
     window.location.href = '/dashboard/executor';
   } else {

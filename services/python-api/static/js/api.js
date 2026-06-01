@@ -191,8 +191,10 @@ async function apiFetchOrders(limit = 20, offset = 0, status) {
   return apiFetch(`/orders/?${query.toString()}`);
 }
 
-async function apiFetchSoldOrders() {
-  return apiFetch('/orders/sold');
+async function apiFetchSoldOrders(limit) {
+  var path = '/orders/sold';
+  if (limit) path += '?limit=' + limit;
+  return apiFetch(path);
 }
 
 async function apiFetchOrder(id) {
@@ -234,6 +236,24 @@ async function apiEscrowAction(orderId, action) {
   return apiFetch(`/escrow/${orderId}/${action}`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey },
+  });
+}
+
+async function apiEscrowResolve(orderId, action) {
+  const idempotencyKey = crypto.randomUUID();
+  return apiFetch(`/escrow/${orderId}/resolve`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: action }),
+  });
+}
+
+async function apiEscrowDispute(orderId, reason) {
+  const idempotencyKey = crypto.randomUUID();
+  return apiFetch(`/escrow/${orderId}/dispute`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason }),
   });
 }
 

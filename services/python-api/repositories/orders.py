@@ -42,5 +42,12 @@ class OrderRepository(RepositoryBase[Order]):
             notes=notes,
         )
 
+    async def list_disputes(
+        self, limit: int = 50, offset: int = 0
+    ) -> tuple[list[Order], int]:
+        return await self.list(
+            limit=limit, offset=offset, status=OrderStatus.disputed.value
+        )
+
     async def update_status(self, order: Order, status: str) -> Order:
         return await self.update(order, status=status)

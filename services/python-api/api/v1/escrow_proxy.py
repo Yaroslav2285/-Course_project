@@ -1,7 +1,7 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.escrow_client import EscrowClient, EscrowClientError
@@ -65,6 +65,8 @@ async def fund_escrow(
     order = await repo.get_by_id(uuid.UUID(order_id))
     if not order:
         raise NotFoundException("Order not found")
+    if order.status == "disputed":
+        raise HTTPException(status_code=409, detail="Cannot fund order while disputed")
 
     escrow_id = await get_escrow_id(order_id)
     client = _get_escrow_client()
@@ -119,6 +121,13 @@ async def advance_escrow(
     target_status = body.get("status", "IN_PROGRESS")
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(order_id)
+
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+    if order.status == "disputed":
+        raise HTTPException(status_code=409, detail="Cannot advance order while disputed")
     go_ok = True
 
     if escrow_id:
@@ -133,10 +142,6 @@ async def advance_escrow(
     if valid not in ("in_progress", "funded", "completed"):
         valid = "funded"
 
-    repo = OrderRepository(session)
-    order = await repo.get_by_id(uuid.UUID(order_id))
-    if not order:
-        raise NotFoundException("Order not found")
     await repo.update_status(order, status=valid)
     return success_response(
         data={
@@ -155,6 +160,13 @@ async def complete_escrow(
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+    if order.status == "disputed":
+        raise HTTPException(status_code=409, detail="Cannot complete order while disputed")
+
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(order_id)
 
@@ -162,6 +174,7 @@ async def complete_escrow(
         if escrow_id:
             await client.advance_escrow(
                 escrow_id=escrow_id,
+
                 status="COMPLETED",
                 idempotency_key=idempotency_key,
             )
@@ -169,10 +182,6 @@ async def complete_escrow(
         logger = structlog.get_logger()
         logger.warning("escrow_complete_fallback", order_id=order_id)
 
-    repo = OrderRepository(session)
-    order = await repo.get_by_id(uuid.UUID(order_id))
-    if not order:
-        raise NotFoundException("Order not found")
     if order.status == "in_progress":
         await repo.update_status(order, status="completed")
     return success_response(
@@ -192,6 +201,13 @@ async def release_escrow(
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+    if order.status == "disputed":
+        raise HTTPException(status_code=409, detail="Cannot release order while disputed")
+
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(order_id)
 
@@ -204,10 +220,6 @@ async def release_escrow(
         logger = structlog.get_logger()
         logger.warning("escrow_release_fallback", order_id=order_id)
 
-    repo = OrderRepository(session)
-    order = await repo.get_by_id(uuid.UUID(order_id))
-    if not order:
-        raise NotFoundException("Order not found")
     await repo.update_status(order, status="released")
 
     wallet_repo = WalletRepository(session)
@@ -229,6 +241,64 @@ async def release_escrow(
             "escrow_id": escrow_id,
             "order_id": order_id,
             "status": "released",
+            "fallback": escrow_id is None,
+        }
+    )
+
+
+@router.post("/{order_id}/resolve")
+async def resolve_escrow(
+    order_id: str,
+    body: dict = None,
+    idempotency_key: str | None = Header(None),
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    action = (body or {}).get("action", "release")
+    if action not in ("refund", "release"):
+        raise HTTPException(status_code=422, detail="action must be 'refund' or 'release'")
+
+    client = _get_escrow_client()
+    escrow_id = await get_escrow_id(order_id)
+
+    try:
+        if escrow_id:
+            await client.resolve_escrow(
+                escrow_id=escrow_id,
+                idempotency_key=idempotency_key,
+            )
+    except EscrowClientError:
+        logger = structlog.get_logger()
+        logger.warning("escrow_resolve_fallback", order_id=order_id)
+
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+
+    target_status = "resolved_refund" if action == "refund" else "resolved_release"
+    await repo.update_status(order, status=target_status)
+
+    wallet_repo = WalletRepository(session)
+    to_user_id = order.buyer_id if action == "refund" else order.seller_id
+    try:
+        await wallet_repo.transfer(
+            from_user_id=ESCROW_USER_ID,
+            to_user_id=to_user_id,
+            amount=order.amount,
+            reference_id=order.id,
+            txn_type="transfer",
+            description=f"Resolve dispute - {action} for order {order.id}",
+        )
+    except ValueError as exc:
+        logger = structlog.get_logger()
+        logger.warning("escrow_resolve_transfer_failed", order_id=order_id, error=str(exc))
+
+    return success_response(
+        data={
+            "escrow_id": escrow_id,
+            "order_id": order_id,
+            "status": target_status,
             "fallback": escrow_id is None,
         }
     )
@@ -262,6 +332,8 @@ async def dispute_escrow(
     if not order:
         raise NotFoundException("Order not found")
     await repo.update_status(order, status="disputed")
+    dispute_note = ("Dispute reason: " + reason) if reason else "Dispute reason: Disputed by user"
+    await repo.update(order, notes=dispute_note)
     return success_response(
         data={
             "escrow_id": escrow_id,
@@ -277,6 +349,8 @@ async def _cancel_escrow_internal(
     session: AsyncSession,
     idempotency_key: str | None = None,
 ) -> dict:
+    if order.status == "disputed":
+        raise HTTPException(status_code=409, detail="Cannot cancel order while disputed")
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(str(order.id))
 

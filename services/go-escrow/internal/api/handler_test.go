@@ -117,6 +117,19 @@ func (m *mockEscrowSvc) Dispute(_ context.Context, id uuid.UUID, reason string) 
 	return account, nil
 }
 
+func (m *mockEscrowSvc) Resolve(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	if err := m.errs["Resolve"]; err != nil {
+		return nil, err
+	}
+	account, ok := m.accounts[id]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	account.Status = domain.StatusResolved
+	account.UpdatedAt = time.Now().UTC()
+	return account, nil
+}
+
 func (m *mockEscrowSvc) GetByID(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
 	if err := m.errs["GetByID"]; err != nil {
 		return nil, err
@@ -150,6 +163,7 @@ func setupTestRouter() (*gin.Engine, *mockEscrowSvc) {
 		v1.POST("/:id/release", handler.Release)
 		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
+		v1.POST("/:id/resolve", handler.Resolve)
 	}
 
 	return r, svc

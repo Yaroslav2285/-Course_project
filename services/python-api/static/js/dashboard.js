@@ -2,6 +2,7 @@
 // LR #10: Multi-lang/REST — escrow proxy calls with idempotency
 // LR #12: AI Integration — role-based UI, debounce, optimistic updates
 // LR #15: Security/UX — Escape key, double-click protection, focus trap
+// LR #16: Lazy-load incoming orders on first tab click, limit=100
 
 var serviceCache = {};
 var serviceData = [];
@@ -9,6 +10,7 @@ var _actionInProgress = {};
 
 // ===== Helpers =====
 async function fetchServiceTitle(id) {
+  if (!id) return '...';
   if (serviceCache[id]) return serviceCache[id];
   try {
     var res = await apiFetchService(id);
@@ -160,7 +162,6 @@ async function renderClientOrders(tbody, orders) {
 
 function clientActions(status, orderId) {
   var html = '';
-  // Phase 7.4: Replace inline escrow actions with "View Detail" link to order detail page
   html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">Details</a>';
   return html;
 }
@@ -178,11 +179,17 @@ function initExecutorDashboard() {
   }
 }
 
+var _incomingLoaded = false;
+
 function switchTab(tab) {
   document.querySelectorAll('.dashboard-tab').forEach(function (t) { t.classList.remove('active'); });
   document.querySelectorAll('.dashboard-tab-content').forEach(function (c) { c.classList.remove('active'); });
   document.querySelector('.dashboard-tab[data-tab="' + tab + '"]').classList.add('active');
   document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'incoming' && !_incomingLoaded) {
+    _incomingLoaded = true;
+    loadIncomingOrders();
+  }
 }
 
 // -- My Services --
@@ -217,7 +224,6 @@ async function initMyServices() {
         + '</td></tr>';
     });
     html += '</tbody></table></div>';
-    // Force DOM replacement — create a brand-new container
     var newContainer = document.createElement('div');
     newContainer.id = 'services-content';
     newContainer.innerHTML = html;
@@ -236,17 +242,31 @@ function initIncomingOrders() {
   var emptyEl = document.getElementById('incoming-empty');
   var errEl = document.getElementById('incoming-error');
   var tableEl = document.getElementById('incoming-table-wrapper');
-  var tbody = document.getElementById('incoming-tbody');
-
-  if (!loadEl) return;
+  if (loadEl) loadEl.style.display = 'block';
   if (emptyEl) emptyEl.style.display = 'none';
   if (errEl) errEl.style.display = 'none';
   if (tableEl) tableEl.style.display = 'none';
-  loadEl.style.display = 'block';
+}
 
-  apiFetchSoldOrders()
+function loadIncomingOrders() {
+  var loadEl = document.getElementById('incoming-loading');
+  var emptyEl = document.getElementById('incoming-empty');
+  var errEl = document.getElementById('incoming-error');
+  var tableEl = document.getElementById('incoming-table-wrapper');
+  var tbody = document.getElementById('incoming-tbody');
+
+  if (!loadEl || !tbody) return;
+  console.log('[incoming] loading orders...');
+  loadEl.style.display = 'block';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (errEl) errEl.style.display = 'none';
+  if (tableEl) tableEl.style.display = 'none';
+
+  apiFetchSoldOrders(100)
     .then(function (res) {
-      var orders = (res.data || []).sort(function (a, b) {
+      var orders = (res.data || []);
+      console.log('[incoming] received', orders.length, 'orders');
+      orders.sort(function (a, b) {
         return new Date(b.created_at) - new Date(a.created_at);
       });
       var total = res.meta ? res.meta.total : orders.length;
@@ -254,21 +274,68 @@ function initIncomingOrders() {
       if (countEl) countEl.textContent = '(' + total + ')';
       loadEl.style.display = 'none';
       if (!orders.length) {
-        emptyEl.style.display = 'block';
+        console.log('[incoming] no orders — showing empty');
+        if (emptyEl) emptyEl.style.display = 'block';
         return;
       }
+      console.log('[incoming] rendering', orders.length, 'orders');
       return renderIncomingOrders(tbody, orders).then(function () {
-        tableEl.style.display = 'block';
+        console.log('[incoming] render done, showing table');
+        if (tableEl) tableEl.style.display = 'block';
       });
     })
     .catch(function (err) {
-      console.error('Dashboard incoming fetch error', err);
+      console.error('[incoming] fetch error:', err);
       loadEl.style.display = 'none';
       if (errEl) {
         errEl.style.display = 'block';
         errEl.innerHTML = '<div class="alert alert-error">' + escapeHtml(err.message) + '</div>';
       }
     });
+
+  if (window._incomingPollTimer) clearInterval(window._incomingPollTimer);
+  window._incomingPollTimer = setInterval(refreshIncomingOrders, 15000);
+}
+
+function refreshIncomingOrders() {
+  var tbody = document.getElementById('incoming-tbody');
+  var tableEl = document.getElementById('incoming-table-wrapper');
+  if (!tbody || !tableEl || tableEl.style.display === 'none') return;
+
+  apiFetchSoldOrders(100)
+    .then(function (res) {
+      var orders = (res.data || []).sort(function (a, b) {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      var total = res.meta ? res.meta.total : orders.length;
+      var countEl = document.getElementById('incoming-count');
+      if (countEl) countEl.textContent = '(' + total + ')';
+
+      if (!orders.length) return;
+
+      var currentHtml = tbody.innerHTML;
+      var newHtml = '';
+      var titles = {};
+      var pending = orders.map(function (o) {
+        return fetchServiceTitle(o.service_id).then(function (t) { titles[o.service_id] = t; });
+      });
+      Promise.all(pending).then(function () {
+        orders.forEach(function (o) {
+          var actions = executorActions(o.status, o.id);
+          newHtml += '<tr>'
+            + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
+            + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
+            + '<td data-label="Status"><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+            + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
+            + '<td class="order-actions" id="eactions-' + o.id + '" data-label="Actions">' + actions + '</td>'
+            + '</tr>';
+        });
+        if (newHtml !== currentHtml) {
+          tbody.innerHTML = newHtml;
+        }
+      });
+    })
+    .catch(function (err) { console.warn('Poll incoming orders error', err); });
 }
 
 async function renderIncomingOrders(tbody, orders) {
@@ -292,7 +359,6 @@ async function renderIncomingOrders(tbody, orders) {
 
 function executorActions(status, orderId) {
   var html = '';
-  // Phase 7.4: Replace inline escrow actions with "View Detail" link to order detail page
   html += '<a href="/orders/' + orderId + '" class="btn btn-outline btn-sm">Details</a>';
   return html;
 }
@@ -310,10 +376,23 @@ async function handleEscrowAction(orderId, action) {
     case 'advance': confirmMsg = 'Accept this order and start working?'; break;
     case 'complete': confirmMsg = 'Mark this order as complete?'; break;
     case 'release': confirmMsg = 'Confirm release of funds to the executor?'; break;
-    case 'dispute': confirmMsg = 'Open a dispute for this order?'; break;
+    case 'dispute': break;
     case 'cancel': confirmMsg = 'Cancel this order?'; break;
   }
-  if (confirmMsg) {
+  if (action === 'dispute') {
+    var reason = await showPromptDialog('Reason for dispute:', '');
+    if (reason === null) {
+      if (btn) btn.disabled = false;
+      delete _actionInProgress[orderId];
+      return;
+    }
+    if (reason.trim() === '') {
+      showToast('Reason is required', 'error');
+      if (btn) btn.disabled = false;
+      delete _actionInProgress[orderId];
+      return;
+    }
+  } else if (confirmMsg) {
     var confirmed = await showConfirmDialog(confirmMsg);
     if (!confirmed) {
       if (btn) btn.disabled = false;
@@ -323,7 +402,7 @@ async function handleEscrowAction(orderId, action) {
   }
 
   try {
-    await doAction(orderId, action);
+    await doAction(orderId, action, reason);
   } catch (err) {
     showAlert(err.message, 'error');
   } finally {
@@ -332,7 +411,7 @@ async function handleEscrowAction(orderId, action) {
   }
 }
 
-async function doAction(orderId, action) {
+async function doAction(orderId, action, reason) {
   // Map actions to API calls
   if (action === 'cancel') {
     await apiEscrowAction(orderId, 'cancel');
@@ -383,7 +462,7 @@ async function doAction(orderId, action) {
     if (typeof initWallet === 'function') initWallet();
   } else if (action === 'dispute') {
     try {
-      await apiEscrowAction(orderId, 'dispute');
+      await apiEscrowDispute(orderId, reason);
     } catch (e) {
       if (e.status === 404 || e.status === 0) {
         await apiUpdateOrderStatus(orderId, 'disputed');
@@ -412,10 +491,8 @@ function mapActionToStatus(action) {
 }
 
 function updateOrderStatusUI(orderId, newStatus) {
-  // Update badge
   var badgeEl = document.getElementById('badge-' + orderId) || document.getElementById('ebadge-' + orderId);
   if (badgeEl) badgeEl.innerHTML = statusBadge(newStatus);
-  // Update actions
   var actionsEl = document.getElementById('actions-' + orderId) || document.getElementById('eactions-' + orderId);
   if (actionsEl) {
     var role = checkAuth().role || 'client';
@@ -516,7 +593,6 @@ async function saveService() {
       showToast('Product updated', 'success');
     } else {
       var newSvc = await apiCreateService(title, desc || null, price);
-      // If user selected "published", update status after creation
       if (status === 'published' && newSvc && newSvc.data && newSvc.data.id) {
         await apiUpdateService(newSvc.data.id, { status: 'published' });
       }

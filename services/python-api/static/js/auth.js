@@ -71,6 +71,10 @@ async function handleLogin(event) {
       setTimeout(function () {
         window.location.href = '/dashboard/executor';
       }, 300);
+    } else if (role === 'admin') {
+      setTimeout(function () {
+        window.location.href = '/admin/disputes';
+      }, 300);
     } else {
       setTimeout(function () {
         window.location.href = '/dashboard/client';
@@ -146,6 +150,10 @@ async function handleRegister(event) {
       setTimeout(function () {
         window.location.href = '/dashboard/executor';
       }, 300);
+    } else if (userRole === 'admin') {
+      setTimeout(function () {
+        window.location.href = '/admin/disputes';
+      }, 300);
     } else {
       setTimeout(function () {
         window.location.href = '/dashboard/client';
@@ -190,7 +198,7 @@ function updateNavbar() {
         ? 'Admin'
         : 'Client';
 
-    var dashUrl = '/dashboard/' + (user.role === 'provider' ? 'executor' : 'client');
+    var dashUrl = user.role === 'admin' ? '/admin/disputes' : '/dashboard/' + (user.role === 'provider' ? 'executor' : 'client');
 
     menu.innerHTML =
       '<a href="/catalog">Catalog</a>' +

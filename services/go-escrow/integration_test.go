@@ -52,6 +52,7 @@ func TestIntegrationEscrowFullCycle(t *testing.T) {
 		v1.POST("/:id/release", handler.Release)
 		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
+		v1.POST("/:id/resolve", handler.Resolve)
 		v1.GET("/:id", handler.GetByID)
 	}
 
@@ -126,9 +127,10 @@ func TestIntegrationEscrowDisputeCycle(t *testing.T) {
 		v1.POST("/:id/release", handler.Release)
 		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
+		v1.POST("/:id/resolve", handler.Resolve)
 	}
 
-	// Create
+	// Step 1: Create escrow
 	orderID := uuid.New().String()
 	b, _ := json.Marshal(map[string]interface{}{"order_id": orderID, "amount": "100.0000"})
 	w := httptest.NewRecorder()
@@ -297,6 +299,23 @@ func (m *mockIntegrationEscrowSvc) Dispute(_ context.Context, id uuid.UUID, reas
 		OrderID:   uuid.MustParse(acc.OrderID),
 		Balance:   acc.Balance,
 		Status:    domain.StatusDisputed,
+		CreatedAt: acc.CreatedAt,
+		UpdatedAt: acc.UpdatedAt,
+	}, nil
+}
+
+func (m *mockIntegrationEscrowSvc) Resolve(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	acc, ok := m.accounts[id.String()]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	acc.Status = "RESOLVED"
+	acc.UpdatedAt = time.Now().UTC()
+	return &domain.EscrowAccount{
+		ID:        id,
+		OrderID:   uuid.MustParse(acc.OrderID),
+		Balance:   acc.Balance,
+		Status:    domain.StatusResolved,
 		CreatedAt: acc.CreatedAt,
 		UpdatedAt: acc.UpdatedAt,
 	}, nil

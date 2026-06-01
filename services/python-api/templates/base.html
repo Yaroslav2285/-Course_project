@@ -6,14 +6,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Service Marketplace{% endblock %}</title>
-  <link rel="stylesheet" href="/api/static/css/main.css?v=8">
-  <link rel="stylesheet" href="/api/static/css/skeleton.css?v=1">
-  <link rel="stylesheet" href="/api/static/css/catalog.css?v=5">
-  <link rel="stylesheet" href="/api/static/css/dashboard.css?v=5">
-  <link rel="stylesheet" href="/api/static/css/escrow.css?v=5">
-  <link rel="stylesheet" href="/api/static/css/audit.css?v=5">
-  <link rel="stylesheet" href="/api/static/css/responsive.css?v=1">
-  <link rel="stylesheet" href="/api/static/css/wallet.css?v=1">
+  <link rel="stylesheet" href="/api/static/css/main.css?v=10">
+  <link rel="stylesheet" href="/api/static/css/skeleton.css?v=2">
+  <link rel="stylesheet" href="/api/static/css/catalog.css?v=6">
+  <link rel="stylesheet" href="/api/static/css/dashboard.css?v=9">
+  <link rel="stylesheet" href="/api/static/css/escrow.css?v=6">
+  <link rel="stylesheet" href="/api/static/css/audit.css?v=6">
+  <link rel="stylesheet" href="/api/static/css/responsive.css?v=2">
+  <link rel="stylesheet" href="/api/static/css/wallet.css?v=2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛒</text></svg>">
 </head>
 <body>
@@ -50,6 +50,10 @@
        tabindex="-1">
     <div class="modal confirm-modal-content">
       <p id="confirm-message" class="confirm-message"></p>
+      <div id="confirm-prompt-wrapper" style="display:none;margin:12px 0;">
+        <label for="confirm-prompt-input" class="form-label" style="display:block;margin-bottom:4px;">Reason</label>
+        <input type="text" id="confirm-prompt-input" class="form-input" style="width:100%;" placeholder="Enter reason...">
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" id="confirm-cancel" aria-label="Cancel">Cancel</button>
         <button type="button" class="btn btn-danger" id="confirm-ok" aria-label="Confirm">Confirm</button>
@@ -87,11 +91,11 @@
     });
   </script>
 
-  <script src="/api/static/js/api.js?v=8"></script>
-  <script src="/api/static/js/api-client.js?v=1"></script>
-  <script src="/api/static/js/toast.js?v=1"></script>
-  <script src="/api/static/js/utils.js?v=7"></script>
-  <script src="/api/static/js/auth.js?v=6"></script>
+  <script src="/api/static/js/api.js?v=11"></script>
+  <script src="/api/static/js/api-client.js?v=2"></script>
+  <script src="/api/static/js/toast.js?v=2"></script>
+  <script src="/api/static/js/utils.js?v=8"></script>
+  <script src="/api/static/js/auth.js?v=7"></script>
   <script>
     // Run navbar update immediately after auth.js loads
     if (typeof updateNavbar === 'function') updateNavbar();

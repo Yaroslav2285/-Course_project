@@ -55,6 +55,9 @@ func NewRouter(svc *service.EscrowService, log *zap.Logger, rateLimiter *RateLim
 
 		// Dispute
 		v1.POST("/:id/dispute", IdempotencyMiddleware(idempotencyStore), handler.Dispute)
+
+		// Resolve
+		v1.POST("/:id/resolve", IdempotencyMiddleware(idempotencyStore), handler.Resolve)
 	}
 
 	return r

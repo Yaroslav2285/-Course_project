@@ -49,7 +49,7 @@ func TestIsValidTransition(t *testing.T) {
 		{"FUNDED → RELEASED (skip)", StatusFunded, StatusReleased, false},
 		{"FUNDED → DISPUTED (skip)", StatusFunded, StatusDisputed, false},
 		{"IN_PROGRESS → RELEASED (skip)", StatusInProgress, StatusReleased, false},
-		{"IN_PROGRESS → DISPUTED (skip)", StatusInProgress, StatusDisputed, false},
+		{"IN_PROGRESS → DISPUTED", StatusInProgress, StatusDisputed, true},
 
 		// === Invalid: terminal states have no outgoing transitions ===
 		{"RELEASED → FUNDED (terminal)", StatusReleased, StatusFunded, false},
@@ -221,6 +221,7 @@ func TestOnlyValidForwardTransitions(t *testing.T) {
 		{StatusFunded, StatusCancelled}:                    true,
 		{StatusInProgress, StatusCompleted}:                true,
 		{StatusInProgress, StatusCancelled}:                true,
+		{StatusInProgress, StatusDisputed}:                 true,
 		{StatusCompleted, StatusReleased}:                  true,
 		{StatusCompleted, StatusDisputed}:                  true,
 		{StatusDisputed, StatusResolved}:                   true,

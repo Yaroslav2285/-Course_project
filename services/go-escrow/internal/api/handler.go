@@ -24,6 +24,7 @@ type EscrowService interface {
 	Release(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 	Cancel(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 	Dispute(ctx context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error)
+	Resolve(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 }
 
@@ -291,6 +292,44 @@ func (h *EscrowHandler) Dispute(c *gin.Context) {
 			writeErrorResponse(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "not found") {
+			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "invalid transition") {
+			writeErrorResponse(c, http.StatusConflict, "INVALID_TRANSITION", err.Error())
+			return
+		}
+		writeErrorResponse(c, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, account)
+}
+
+// Resolve
+// @Summary Resolve a disputed escrow account
+// @Description Resolves a disputed escrow account (DISPUTED → RESOLVED). Closes the dispute and records a RESOLVE transaction.
+// @Tags escrow
+// @Accept json
+// @Produce json
+// @Param id path string true "Escrow account ID (UUID)"
+// @Success 200 {object} SuccessResponse "Dispute resolved"
+// @Failure 400 {object} ErrorResponse "INVALID_UUID"
+// @Failure 404 {object} ErrorResponse "NOT_FOUND"
+// @Failure 409 {object} ErrorResponse "INVALID_TRANSITION"
+// @Failure 500 {object} ErrorResponse "INTERNAL"
+// @Router /v1/escrow/{id}/resolve [post]
+func (h *EscrowHandler) Resolve(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeErrorResponse(c, http.StatusBadRequest, "INVALID_UUID", "id must be a valid UUID")
+		return
+	}
+
+	account, err := h.svc.Resolve(c.Request.Context(), id)
+	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 			return

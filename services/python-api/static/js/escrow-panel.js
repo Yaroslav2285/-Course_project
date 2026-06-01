@@ -4,11 +4,13 @@
 // LR #14: Data Engineering — escrow state mapping
 
 var ESCROW_STEPS = [
-  { status: 'pending',      label: 'Created',        icon: '&#128196;' },
-  { status: 'funded',       label: 'Funded',         icon: '&#128176;' },
-  { status: 'in_progress',  label: 'In Progress',    icon: '&#9881;&#65039;' },
-  { status: 'completed',    label: 'Completed',      icon: '&#9989;' },
-  { status: 'released',     label: 'Released',       icon: '&#128184;' },
+  { status: 'pending',        label: 'Created',        icon: '&#128196;' },
+  { status: 'funded',         label: 'Funded',         icon: '&#128176;' },
+  { status: 'in_progress',    label: 'In Progress',    icon: '&#9881;&#65039;' },
+  { status: 'completed',      label: 'Completed',      icon: '&#9989;' },
+  { status: 'released',       label: 'Released',       icon: '&#128184;' },
+  { status: 'resolved_release', label: 'Resolved',     icon: '&#128190;' },
+  { status: 'resolved_refund',  label: 'Refunded',     icon: '&#128184;' },
 ];
 
 var _escrowActionInProgress = {};
@@ -82,8 +84,22 @@ function renderEscrowActions(status, orderId, role) {
     case 'released':
       html += '<div class="alert alert-success" style="margin:0;">&#9989; Order completed. Payment released to executor.</div>';
       break;
+    case 'resolved_release':
+      html += '<div class="alert alert-success" style="margin:0;">&#9989; Dispute resolved — payment released to provider.</div>';
+      break;
+    case 'resolved_refund':
+      html += '<div class="alert alert-info" style="margin:0;">&#128184; Dispute resolved — buyer refunded.</div>';
+      break;
     case 'disputed':
-      html += '<div class="alert alert-warning" style="margin:0;">&#9888;&#65039; Dispute opened. Admin will review.</div>';
+      if (role === 'admin') {
+        html += '<div class="alert alert-warning" style="margin:0;">&#9888;&#65039; Dispute opened. Resolve:</div>';
+        html += '<div style="margin-top:8px;display:flex;gap:8px;">';
+        html += '<button type="button" class="btn-action btn-escrow-release" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'resolve\')">&#128184; Release to Provider</button>';
+        html += '<button type="button" class="btn-action btn-action-cancel" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'resolve_refund\')">&#128184; Refund Buyer</button>';
+        html += '</div>';
+      } else {
+        html += '<div class="alert alert-warning" style="margin:0;">&#9888;&#65039; Dispute opened. Admin will review.</div>';
+      }
       break;
     case 'cancelled':
       html += '<div class="alert alert-info" style="margin:0;">Order cancelled.</div>';
@@ -111,7 +127,7 @@ async function loadEscrowPanel(orderId) {
       // escrow unavailable — continue with order data
     }
 
-    var goToOrder = { created: 'pending', funded: 'funded', in_progress: 'in_progress', completed: 'completed', released: 'released', cancelled: 'cancelled', disputed: 'disputed' };
+    var goToOrder = { created: 'pending', funded: 'funded', in_progress: 'in_progress', completed: 'completed', released: 'released', cancelled: 'cancelled', disputed: 'disputed', resolved: 'resolved_release' };
     var rawStatus = escrow && escrow.status ? escrow.status : null;
     var goStatus = rawStatus ? (goToOrder[rawStatus.toLowerCase()] || null) : null;
     var status = orderData.status || 'pending';
@@ -159,10 +175,23 @@ async function handleEscrowPanelAction(orderId, action) {
     case 'advance': confirmMsg = 'Accept this order and start working?'; break;
     case 'complete': confirmMsg = 'Mark work as complete?'; break;
     case 'release': confirmMsg = 'Confirm release of funds?'; break;
-    case 'dispute': confirmMsg = 'Open a dispute?'; break;
+    case 'resolve': confirmMsg = 'Release payment to provider and close dispute?'; break;
+    case 'resolve_refund': confirmMsg = 'Refund buyer and close dispute?'; break;
+    case 'dispute': break; // handled below with reason prompt
     case 'cancel': confirmMsg = 'Cancel this order?'; break;
   }
-  if (confirmMsg) {
+  if (action === 'dispute') {
+    var reason = await showPromptDialog('Reason for dispute:', '');
+    if (reason === null) {
+      delete _escrowActionInProgress[orderId];
+      return;
+    }
+    if (reason.trim() === '') {
+      showToast('Reason is required', 'error');
+      delete _escrowActionInProgress[orderId];
+      return;
+    }
+  } else if (confirmMsg) {
     var confirmed = await showConfirmDialog(confirmMsg);
     if (!confirmed) {
       delete _escrowActionInProgress[orderId];
@@ -220,13 +249,24 @@ async function handleEscrowPanelAction(orderId, action) {
       if (typeof initWallet === 'function') initWallet();
     } else if (action === 'dispute') {
       try {
-        await apiEscrowAction(orderId, 'dispute');
+        await apiEscrowDispute(orderId, reason);
       } catch (e) {
         if (e.status === 404 || e.status === 0) {
           await apiUpdateOrderStatus(orderId, 'disputed');
         } else { throw e; }
       }
       showToast('Dispute opened', 'info');
+    } else if (action === 'resolve' || action === 'resolve_refund') {
+      var resolveAction = action === 'resolve_refund' ? 'refund' : 'release';
+      try {
+        await apiEscrowResolve(orderId, resolveAction);
+      } catch (e) {
+        if (e.status === 404 || e.status === 0) {
+          await apiUpdateOrderStatus(orderId, 'resolved_' + resolveAction);
+        } else { throw e; }
+      }
+      showToast('Dispute resolved — ' + resolveAction, 'success');
+      if (typeof initWallet === 'function') initWallet();
     }
 
     updateEscrowPanelUI(orderId, mapPanelActionToStatus(action));
@@ -245,6 +285,8 @@ function mapPanelActionToStatus(action) {
     case 'complete': return 'completed';
     case 'release': return 'released';
     case 'dispute': return 'disputed';
+    case 'resolve': return 'resolved_release';
+    case 'resolve_refund': return 'resolved_refund';
     case 'cancel': return 'cancelled';
     default: return 'pending';
   }

@@ -93,6 +93,16 @@ func (m *mockRepo) CreateDispute(ctx context.Context, tx *sql.Tx, dispute *domai
 	return nil
 }
 
+func (m *mockRepo) UpdateDisputeStatus(ctx context.Context, tx *sql.Tx, escrowAccountID uuid.UUID, status domain.DisputeStatus) error {
+	for i, d := range m.disputes {
+		if d.EscrowAccountID == escrowAccountID {
+			m.disputes[i].Status = status
+			return nil
+		}
+	}
+	return nil
+}
+
 func (m *mockRepo) GetTransactionsByEscrowID(ctx context.Context, id uuid.UUID) ([]domain.Transaction, error) {
 	return m.transactions, nil
 }

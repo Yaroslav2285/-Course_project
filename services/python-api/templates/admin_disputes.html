@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Admin — Dispute Management{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+  <h1>&#9888;&#65039; Dispute Management</h1>
+</div>
+<div id="alert-container"></div>
+
+<div class="card">
+  <div id="disputes-loading">
+    <div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>
+  </div>
+  <div id="disputes-empty" class="dashboard-empty" style="display:none;">
+    <div class="dashboard-empty-icon">&#9989;</div>
+    <h3>No open disputes</h3>
+    <p>All disputes have been resolved.</p>
+  </div>
+  <div id="disputes-error" style="display:none;"></div>
+  <div id="disputes-table-wrapper" style="display:none;">
+    <div class="table-wrapper">
+      <table class="orders-table" role="table" aria-label="Disputed orders">
+        <thead>
+          <tr>
+            <th scope="col">Order ID</th>
+            <th scope="col">Buyer</th>
+            <th scope="col">Seller</th>
+            <th scope="col">Amount</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="disputes-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/api/static/js/admin-disputes.js?v=3"></script>
+<script>initAdminDisputes();</script>
+{% endblock %}

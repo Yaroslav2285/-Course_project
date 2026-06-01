@@ -103,6 +103,23 @@
   display: block;
 }
 
+/* Incoming orders — scrollable with auto-refresh */
+#tab-incoming.active .card {
+  max-height: calc(100vh - 340px);
+  overflow-y: auto;
+}
+
+#tab-incoming.active .card .card-header {
+  position: sticky;
+  top: 0;
+  background: var(--white);
+  z-index: 1;
+}
+
+#tab-incoming.active .card .table-wrapper {
+  overflow-x: auto;
+}
+
 /* ===== Orders table ===== */
 .orders-table {
   width: 100%;
@@ -228,6 +245,14 @@
 }
 .btn-action-cancel:hover:not(:disabled) {
   background: var(--danger-light);
+}
+
+.btn-action-secondary {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+.btn-action-secondary:hover:not(:disabled) {
+  background: var(--gray-300);
 }
 
 /* ===== Skeleton loading ===== */

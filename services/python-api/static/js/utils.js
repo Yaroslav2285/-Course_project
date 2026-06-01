@@ -7,6 +7,80 @@
 // Do NOT redeclare here — utils.js showToast was removed to prevent
 // recursion (it was overwriting window.showToast and calling itself).
 
+// === Custom prompt dialog (replaces browser prompt()) ===
+function showPromptDialog(message, defaultValue) {
+  return new Promise(function (resolve) {
+    var modal = document.getElementById('confirm-modal');
+    var msgEl = document.getElementById('confirm-message');
+    var promptWrapper = document.getElementById('confirm-prompt-wrapper');
+    var promptInput = document.getElementById('confirm-prompt-input');
+    var cancelBtn = document.getElementById('confirm-cancel');
+    var okBtn = document.getElementById('confirm-ok');
+
+    if (!modal || !msgEl || !promptInput || !cancelBtn || !okBtn) {
+      resolve(window.prompt(message, defaultValue));
+      return;
+    }
+
+    promptWrapper.style.display = '';
+    promptInput.value = defaultValue || '';
+    msgEl.textContent = message;
+    okBtn.textContent = 'OK';
+    cancelBtn.style.display = '';
+    modal.classList.remove('hidden');
+    promptInput.focus();
+
+    function cleanup() {
+      modal.classList.add('hidden');
+      promptWrapper.style.display = 'none';
+      okBtn.textContent = 'Confirm';
+      if (modal._keyHandler) {
+        document.removeEventListener('keydown', modal._keyHandler);
+        delete modal._keyHandler;
+      }
+      cancelBtn.removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    function onOk() {
+      var val = promptInput.value;
+      cleanup();
+      resolve(val);
+    }
+
+    cancelBtn.addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+
+    modal._keyHandler = function (e) {
+      if (e.key === 'Escape') { onCancel(); return; }
+      if (e.key === 'Enter') { onOk(); return; }
+      if (e.key === 'Tab') {
+        var focusable = modal.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', modal._keyHandler);
+
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) onCancel();
+    });
+  });
+}
+
 // === Custom confirm dialog (replaces browser confirm()) ===
 function showConfirmDialog(message) {
   return new Promise(function (resolve) {

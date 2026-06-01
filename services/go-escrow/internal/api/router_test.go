@@ -61,6 +61,7 @@ func TestNewRouter_RouteRegistration(t *testing.T) {
 		{"POST", "/v1/escrow/:id/release"},
 		{"POST", "/v1/escrow/:id/cancel"},
 		{"POST", "/v1/escrow/:id/dispute"},
+		{"POST", "/v1/escrow/:id/resolve"},
 	}
 
 	registered := r.Routes()

@@ -68,6 +68,11 @@ async def order_detail_page(request: Request, order_id: str):
     )
 
 
+@router.get("/admin/disputes", response_class=HTMLResponse, include_in_schema=False)
+async def admin_disputes_page(request: Request):
+    return templates.TemplateResponse(request, "admin_disputes.html", {"request": request})
+
+
 @router.get("/audit/{order_id}", response_class=HTMLResponse, include_in_schema=False)
 async def audit_page(request: Request, order_id: str):
     return templates.TemplateResponse(
