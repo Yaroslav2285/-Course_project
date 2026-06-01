@@ -104,7 +104,8 @@ async function loadEscrowPanel(orderId) {
       // escrow unavailable — continue with order data
     }
 
-    var status = escrow && escrow.status ? escrow.status : (orderData.status || 'pending');
+    var rawStatus = escrow && escrow.status ? escrow.status : (orderData.status || 'pending');
+    var status = rawStatus.toLowerCase();
     var disputed = status === 'disputed';
     var role = checkAuth().role || 'client';
 
