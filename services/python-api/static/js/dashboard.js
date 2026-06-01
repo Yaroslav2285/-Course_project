@@ -330,16 +330,14 @@ async function doAction(orderId, action) {
     await apiUpdateOrderStatus(orderId, 'cancelled');
     showToast('Order cancelled', 'info');
   } else if (action === 'fund') {
-    // Try escrow proxy first, fallback to order status update
     try {
-      await apiEscrowAction(orderId, 'fund');
+      await apiWalletPay(orderId);
     } catch (e) {
-      if (e.status === 404 || e.status === 0) {
-        // Escrow proxy unavailable (dev mode) → use order PATCH
-        await apiUpdateOrderStatus(orderId, 'funded');
-      } else {
-        throw e;
+      if (e.status === 400) {
+        await showModalAlert(e.message || 'Insufficient funds');
+        return;
       }
+      throw e;
     }
     showToast('Payment successful!', 'success');
   } else if (action === 'advance') {

@@ -1,5 +1,6 @@
 # LR #11: Containerization
 .env
+.env.local
 .venv
 __pycache__/
 *.pyc

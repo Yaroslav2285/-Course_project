@@ -255,6 +255,13 @@ async function apiFetchWalletTopUp(amount) {
   });
 }
 
+async function apiWalletPay(orderId) {
+  return apiFetch('/wallet/pay', {
+    method: 'POST',
+    body: JSON.stringify({ order_id: orderId }),
+  });
+}
+
 async function apiFetchWalletTransactions(limit) {
   return apiFetch('/wallet/transactions?limit=' + (limit || 20));
 }

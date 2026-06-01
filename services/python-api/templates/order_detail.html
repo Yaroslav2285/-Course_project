@@ -9,7 +9,7 @@
 </div>
 <div id="order-detail-error" class="hidden" style="padding:24px;">
   <div class="alert alert-error" id="order-detail-error-message">Failed to load order.</div>
-  <button class="btn btn-primary" onclick="loadOrderDetail()">Retry</button>
+  <button type="button" class="btn btn-primary" onclick="loadOrderDetail()">Retry</button>
   <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
 </div>
 <div id="order-detail-content" class="hidden">
@@ -31,6 +31,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="/api/static/js/escrow-panel.js?v=8"></script>
+<script src="/api/static/js/escrow-panel.js?v=9"></script>
 <script>initOrderDetailPage();</script>
 {% endblock %}

@@ -72,6 +72,57 @@ function showConfirmDialog(message) {
   });
 }
 
+// === Custom alert dialog (modal, not browser alert()) ===
+function showModalAlert(message) {
+  return new Promise(function (resolve) {
+    var modal = document.getElementById('confirm-modal');
+    var msgEl = document.getElementById('confirm-message');
+    var cancelBtn = document.getElementById('confirm-cancel');
+    var okBtn = document.getElementById('confirm-ok');
+
+    if (!modal || !msgEl || !cancelBtn || !okBtn) {
+      window.alert(message);
+      resolve();
+      return;
+    }
+
+    cancelBtn.style.display = 'none';
+    okBtn.textContent = 'OK';
+    msgEl.textContent = message;
+    modal.classList.remove('hidden');
+
+    function cleanup() {
+      modal.classList.add('hidden');
+      cancelBtn.style.display = '';
+      okBtn.textContent = 'Confirm';
+      if (modal._keyHandler) {
+        document.removeEventListener('keydown', modal._keyHandler);
+        delete modal._keyHandler;
+      }
+      okBtn.removeEventListener('click', onOk);
+      modal.removeEventListener('click', onClickOutside);
+    }
+
+    function onOk() {
+      cleanup();
+      resolve();
+    }
+
+    function onClickOutside(e) {
+      if (e.target === modal) cleanup();
+    }
+
+    okBtn.addEventListener('click', onOk);
+    modal.addEventListener('click', onClickOutside);
+    okBtn.focus();
+
+    modal._keyHandler = function (e) {
+      if (e.key === 'Escape') { cleanup(); return; }
+    };
+    document.addEventListener('keydown', modal._keyHandler);
+  });
+}
+
 // === Alert helper ===
 function showAlert(message, type, containerId) {
   containerId = containerId || 'alert-container';

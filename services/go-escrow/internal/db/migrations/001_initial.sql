@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS escrow_accounts (
 CREATE INDEX IF NOT EXISTS idx_escrow_accounts_order_id ON escrow_accounts(order_id);
 CREATE INDEX IF NOT EXISTS idx_escrow_accounts_status ON escrow_accounts(status);
 
-CREATE TABLE IF NOT EXISTS transactions (
+CREATE TABLE IF NOT EXISTS escrow_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     escrow_account_id UUID NOT NULL,
     order_id UUID NOT NULL,
@@ -24,12 +24,12 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_type VARCHAR(32) NOT NULL,
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT fk_transaction_escrow FOREIGN KEY(escrow_account_id) REFERENCES escrow_accounts(id) ON DELETE CASCADE,
-    CONSTRAINT chk_transaction_amount_positive CHECK (amount > 0)
+    CONSTRAINT fk_escrow_transaction_escrow FOREIGN KEY(escrow_account_id) REFERENCES escrow_accounts(id) ON DELETE CASCADE,
+    CONSTRAINT chk_escrow_transaction_amount_positive CHECK (amount > 0)
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(order_id);
-CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_escrow_transactions_order_id ON escrow_transactions(order_id);
+CREATE INDEX IF NOT EXISTS idx_escrow_transactions_status ON escrow_transactions(status);
 
 CREATE TABLE IF NOT EXISTS disputes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

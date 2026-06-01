@@ -108,7 +108,7 @@ func (r *escrowRepository) UpdateBalanceAndStatus(ctx context.Context, tx *sql.T
 }
 
 func (r *escrowRepository) CreateTransaction(ctx context.Context, tx *sql.Tx, t *domain.Transaction) error {
-	query := `INSERT INTO transactions (id, escrow_account_id, order_id, amount, transaction_type, status, created_at)
+	query := `INSERT INTO escrow_transactions (id, escrow_account_id, order_id, amount, transaction_type, status, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := tx.ExecContext(ctx, query,
 		t.ID, t.EscrowAccountID, t.OrderID, t.Amount, t.TransactionType, t.Status, t.CreatedAt)
@@ -131,7 +131,7 @@ func (r *escrowRepository) CreateDispute(ctx context.Context, tx *sql.Tx, d *dom
 
 func (r *escrowRepository) GetTransactionsByEscrowID(ctx context.Context, id uuid.UUID) ([]domain.Transaction, error) {
 	query := `SELECT id, escrow_account_id, order_id, amount, transaction_type, status, created_at
-		FROM transactions WHERE escrow_account_id = $1 ORDER BY created_at`
+		FROM escrow_transactions WHERE escrow_account_id = $1 ORDER BY created_at`
 	rows, err := r.db.QueryContext(ctx, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("query transactions: %w", err)

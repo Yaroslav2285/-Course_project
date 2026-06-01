@@ -1,11 +1,13 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
-import logging
+import logging as _logging
 
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = _logging.getLogger(__name__)
 
 
 class AppHTTPException(HTTPException):
@@ -54,6 +56,7 @@ async def validation_exception_handler(
         }
         for err in exc.errors()
     ]
+    logger.warning("Validation error: %s %s — %s", request.method, request.url.path, errors)
     return JSONResponse(
         status_code=422,
         content={
@@ -91,7 +94,7 @@ async def http_exception_handler(
 async def unhandled_exception_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:
-    logging.getLogger(__name__).exception(
+    logger.exception(
         "Unhandled exception: %s %s", request.method, request.url.path
     )
     return JSONResponse(

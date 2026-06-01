@@ -3,17 +3,50 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db import get_db
 from core.deps import get_current_user
 from core.exceptions import NotFoundException
 from core.responses import success_response
+from models.orders import Order
 from repositories.orders import OrderRepository
 from schemas.orders import OrderCreate, OrderRead, OrderStatusUpdate
 from schemas.users import UserRead
 
 router = APIRouter()
+
+
+@router.get("/debug", response_model=dict)
+async def debug_orders(
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    result = await session.execute(select(Order))
+    all_orders = result.scalars().all()
+    orders_data = []
+    for o in all_orders:
+        orders_data.append({
+            "id": str(o.id),
+            "buyer_id": str(o.buyer_id),
+            "seller_id": str(o.seller_id),
+            "amount": str(o.amount),
+            "status": o.status,
+            "created_at": str(o.created_at),
+        })
+    from repositories.users import UserRepository
+    u = UserRepository(session)
+    seller_user = await u.get_by_id(UUID("26ccbf6a-bac2-46b3-8ce5-d2e68f981d4e"))
+    seller_info = None
+    if seller_user:
+        seller_info = {"email": seller_user.email, "role": seller_user.role, "id": str(seller_user.id)}
+    return {
+        "current_user": {"id": str(current_user.id), "email": current_user.email, "role": current_user.role},
+        "seller_26ccbf6a": seller_info,
+        "orders_count": len(orders_data),
+        "orders": orders_data,
+    }
 
 
 @router.get("/", response_model=dict)

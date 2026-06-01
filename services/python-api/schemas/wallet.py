@@ -12,6 +12,10 @@ class TopUpRequest(BaseModel):
     amount: condecimal(max_digits=19, decimal_places=4) = Field(..., gt=Decimal("0"))
 
 
+class PayRequest(BaseModel):
+    order_id: UUID
+
+
 class WalletRead(BaseModel):
     id: UUID
     user_id: UUID

@@ -162,8 +162,12 @@ async function submitOrderModal() {
     }, 1200);
   } catch (err) {
     var msg = err.message || 'Failed to place order';
-    if (err.data && err.data.errors && err.data.errors[0] && err.data.errors[0].detail) {
-      msg = err.data.errors[0].detail;
+    if (err.data && err.data.errors && err.data.errors[0]) {
+      var e = err.data.errors[0];
+      msg = e.detail || msg;
+      if (e.fields && e.fields.length) {
+        msg += ' (' + e.fields.map(function(f) { return f.field + ': ' + f.message; }).join('; ') + ')';
+      }
     }
     errorEl.textContent = msg;
     errorEl.classList.remove('hidden');
