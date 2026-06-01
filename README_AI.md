@@ -688,8 +688,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ✅ Footer — copyright на всех страницах, прижат к низу
 - ✅ **Admin dispute panel** — `/admin/disputes`: таблица споров, Details модалка, Release/Refund кнопки, buyer/seller email, dispute reason
 
-**Известные проблемы (некритичные для курсовой):**
-- ❌ **No PostgreSQL in Go integration tests** — unit-тесты используют моки sqlmock/httptest. PostgreSQL тесты есть за `postgres_integration` build tag.
+
 
 **Тесты:**
 - Python: 81/81 passed (80% coverage on api/models/repositories/core; coverable target met ✅)
