@@ -31,6 +31,8 @@ class ServiceRepository(RepositoryBase[Service]):
         title: str,
         price: str,
         description: str | None = None,
+        category: str | None = None,
+        discount: int | None = None,
         status: str = "draft",
     ) -> Service:
         return await self.create(
@@ -38,6 +40,8 @@ class ServiceRepository(RepositoryBase[Service]):
             title=title,
             price=price,
             description=description,
+            category=category,
+            discount=discount,
             status=status,
         )
 
@@ -46,6 +50,8 @@ class ServiceRepository(RepositoryBase[Service]):
         service: Service,
         title: str | None = None,
         description: str | None = None,
+        category: str | None = None,
+        discount: int | None = None,
         price: str | None = None,
         status: str | None = None,
     ) -> Service:
@@ -54,6 +60,10 @@ class ServiceRepository(RepositoryBase[Service]):
             updates["title"] = title
         if description is not None:
             updates["description"] = description
+        if category is not None:
+            updates["category"] = category
+        if discount is not None:
+            updates["discount"] = discount
         if price is not None:
             updates["price"] = price
         if status is not None:

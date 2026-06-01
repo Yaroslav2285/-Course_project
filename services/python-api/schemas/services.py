@@ -11,12 +11,16 @@ from pydantic import BaseModel, Field, condecimal
 class ServiceCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
+    category: str | None = Field(None, max_length=50)
+    discount: int | None = Field(None, ge=0, le=100)
     price: condecimal(max_digits=19, decimal_places=4) = Field(..., gt=Decimal("0"))
 
 
 class ServiceUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = None
+    category: str | None = Field(None, max_length=50)
+    discount: int | None = Field(None, ge=0, le=100)
     price: condecimal(max_digits=19, decimal_places=4) | None = Field(
         None, gt=Decimal("0")
     )
@@ -29,6 +33,8 @@ class ServiceRead(BaseModel):
     provider_email: str | None = None
     title: str
     description: str | None
+    category: str | None = None
+    discount: int | None = None
     price: Decimal
     status: str
     created_at: datetime

@@ -22,6 +22,7 @@ async def list_services(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(None, pattern=r"^(draft|published|archived)$"),
+    category: str | None = Query(None, max_length=50),
     session: AsyncSession = Depends(get_db),
 ):
     repo = ServiceRepository(session)
@@ -30,6 +31,8 @@ async def list_services(
         filters["status"] = status
     else:
         filters["status"] = ServiceStatus.published.value
+    if category:
+        filters["category"] = category
     items, total = await repo.list(limit=limit, offset=offset, **filters)
     service_list = []
     for s in items:
@@ -83,6 +86,8 @@ async def create_service(
         provider_id=current_user.id,
         title=payload.title,
         description=payload.description,
+        category=payload.category,
+        discount=payload.discount,
         price=str(payload.price),
     )
     return success_response(data=ServiceRead.model_validate(service).model_dump())
@@ -105,6 +110,8 @@ async def update_service(
         service,
         title=payload.title,
         description=payload.description,
+        category=payload.category,
+        discount=payload.discount,
         price=str(payload.price) if payload.price else None,
         status=payload.status,
     )

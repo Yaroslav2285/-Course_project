@@ -3,7 +3,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Enum, ForeignKey, Numeric, String, Text, TIMESTAMP, text
+from sqlalchemy import Column, Enum, ForeignKey, Integer, Numeric, String, Text, TIMESTAMP, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -23,6 +23,8 @@ class Service(Base):
     provider_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=True)
+    discount = Column(Integer, nullable=True)
     price = Column(Numeric(19, 4), nullable=False)
     status = Column(Enum(ServiceStatus, name="service_status", native_enum=False), nullable=False, default=ServiceStatus.draft)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False)
