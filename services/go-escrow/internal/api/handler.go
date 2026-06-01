@@ -22,6 +22,7 @@ type EscrowService interface {
 	Fund(ctx context.Context, id uuid.UUID, amount decimal.Decimal) (*domain.EscrowAccount, error)
 	AdvanceStatus(ctx context.Context, id uuid.UUID, nextStatus domain.EscrowStatus) (*domain.EscrowAccount, error)
 	Release(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
+	Cancel(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 	Dispute(ctx context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error)
 }
@@ -124,6 +125,31 @@ func (h *EscrowHandler) Release(c *gin.Context) {
 	}
 
 	account, err := h.svc.Release(c.Request.Context(), id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "invalid transition") {
+			writeErrorResponse(c, http.StatusConflict, "INVALID_TRANSITION", err.Error())
+			return
+		}
+		writeErrorResponse(c, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, account)
+}
+
+func (h *EscrowHandler) Cancel(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		writeErrorResponse(c, http.StatusBadRequest, "INVALID_UUID", "id must be a valid UUID")
+		return
+	}
+
+	account, err := h.svc.Cancel(c.Request.Context(), id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())

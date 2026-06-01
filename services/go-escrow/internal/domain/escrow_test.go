@@ -25,12 +25,16 @@ func TestIsValidTransition(t *testing.T) {
 		{"COMPLETED → RELEASED", StatusCompleted, StatusReleased, true},
 		{"COMPLETED → DISPUTED", StatusCompleted, StatusDisputed, true},
 		{"DISPUTED → RESOLVED", StatusDisputed, StatusResolved, true},
+		{"FUNDED → CANCELLED", StatusFunded, StatusCancelled, true},
+		{"IN_PROGRESS → CANCELLED", StatusInProgress, StatusCancelled, true},
 
 		// === Invalid: reverse transitions ===
 		{"FUNDED → CREATED (reverse)", StatusFunded, StatusCreated, false},
 		{"IN_PROGRESS → FUNDED (reverse)", StatusInProgress, StatusFunded, false},
 		{"COMPLETED → IN_PROGRESS (reverse)", StatusCompleted, StatusInProgress, false},
 		{"RELEASED → COMPLETED (reverse)", StatusReleased, StatusCompleted, false},
+		{"CANCELLED → FUNDED (reverse)", StatusCancelled, StatusFunded, false},
+		{"CANCELLED → IN_PROGRESS (reverse)", StatusCancelled, StatusInProgress, false},
 		{"DISPUTED → COMPLETED (reverse)", StatusDisputed, StatusCompleted, false},
 		{"RESOLVED → DISPUTED (reverse)", StatusResolved, StatusDisputed, false},
 
@@ -39,6 +43,7 @@ func TestIsValidTransition(t *testing.T) {
 		{"CREATED → COMPLETED (skip)", StatusCreated, StatusCompleted, false},
 		{"CREATED → RELEASED (skip)", StatusCreated, StatusReleased, false},
 		{"CREATED → DISPUTED (skip)", StatusCreated, StatusDisputed, false},
+		{"CREATED → CANCELLED (skip)", StatusCreated, StatusCancelled, false},
 		{"CREATED → RESOLVED (skip)", StatusCreated, StatusResolved, false},
 		{"FUNDED → COMPLETED (skip)", StatusFunded, StatusCompleted, false},
 		{"FUNDED → RELEASED (skip)", StatusFunded, StatusReleased, false},
@@ -52,6 +57,13 @@ func TestIsValidTransition(t *testing.T) {
 		{"RELEASED → IN_PROGRESS (terminal)", StatusReleased, StatusInProgress, false},
 		{"RELEASED → DISPUTED (terminal)", StatusReleased, StatusDisputed, false},
 		{"RELEASED → RESOLVED (terminal)", StatusReleased, StatusResolved, false},
+		{"CANCELLED → FUNDED (terminal)", StatusCancelled, StatusFunded, false},
+		{"CANCELLED → CREATED (terminal)", StatusCancelled, StatusCreated, false},
+		{"CANCELLED → IN_PROGRESS (terminal)", StatusCancelled, StatusInProgress, false},
+		{"CANCELLED → COMPLETED (terminal)", StatusCancelled, StatusCompleted, false},
+		{"CANCELLED → RELEASED (terminal)", StatusCancelled, StatusReleased, false},
+		{"CANCELLED → DISPUTED (terminal)", StatusCancelled, StatusDisputed, false},
+		{"CANCELLED → RESOLVED (terminal)", StatusCancelled, StatusResolved, false},
 		{"RESOLVED → CREATED (terminal)", StatusResolved, StatusCreated, false},
 		{"RESOLVED → FUNDED (terminal)", StatusResolved, StatusFunded, false},
 		{"RESOLVED → IN_PROGRESS (terminal)", StatusResolved, StatusInProgress, false},
@@ -65,6 +77,7 @@ func TestIsValidTransition(t *testing.T) {
 		{"COMPLETED → COMPLETED (self)", StatusCompleted, StatusCompleted, false},
 		{"RELEASED → RELEASED (self)", StatusReleased, StatusReleased, false},
 		{"DISPUTED → DISPUTED (self)", StatusDisputed, StatusDisputed, false},
+		{"CANCELLED → CANCELLED (self)", StatusCancelled, StatusCancelled, false},
 		{"RESOLVED → RESOLVED (self)", StatusResolved, StatusResolved, false},
 
 		// === Invalid: unknown status ===
@@ -130,6 +143,7 @@ func TestEscrowStatusString(t *testing.T) {
 		{StatusInProgress, "IN_PROGRESS"},
 		{StatusCompleted, "COMPLETED"},
 		{StatusReleased, "RELEASED"},
+		{StatusCancelled, "CANCELLED"},
 		{StatusDisputed, "DISPUTED"},
 		{StatusResolved, "RESOLVED"},
 	}
@@ -196,6 +210,7 @@ func TestOnlyValidForwardTransitions(t *testing.T) {
 		StatusInProgress,
 		StatusCompleted,
 		StatusReleased,
+		StatusCancelled,
 		StatusDisputed,
 		StatusResolved,
 	}
@@ -203,7 +218,9 @@ func TestOnlyValidForwardTransitions(t *testing.T) {
 	validPairs := map[[2]EscrowStatus]bool{
 		{StatusCreated, StatusFunded}:                      true,
 		{StatusFunded, StatusInProgress}:                   true,
+		{StatusFunded, StatusCancelled}:                    true,
 		{StatusInProgress, StatusCompleted}:                true,
+		{StatusInProgress, StatusCancelled}:                true,
 		{StatusCompleted, StatusReleased}:                  true,
 		{StatusCompleted, StatusDisputed}:                  true,
 		{StatusDisputed, StatusResolved}:                   true,

@@ -73,6 +73,20 @@ func (m *mockEscrowSvc) Release(_ context.Context, id uuid.UUID) (*domain.Escrow
 	return account, nil
 }
 
+func (m *mockEscrowSvc) Cancel(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	account, ok := m.accounts[id]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	if !domain.IsValidTransition(account.Status, domain.StatusCancelled) {
+		return nil, fmt.Errorf("invalid transition from %s to CANCELLED", account.Status)
+	}
+	account.Balance = decimal.Zero
+	account.Status = domain.StatusCancelled
+	account.UpdatedAt = time.Now().UTC()
+	return account, nil
+}
+
 func (m *mockEscrowSvc) Dispute(_ context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error) {
 	account, ok := m.accounts[id]
 	if !ok {
@@ -111,6 +125,7 @@ func setupTestRouter() (*gin.Engine, *mockEscrowSvc) {
 		v1.POST("/:id/fund", handler.Fund)
 		v1.POST("/:id/advance", handler.Advance)
 		v1.POST("/:id/release", handler.Release)
+		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
 	}
 
@@ -302,6 +317,63 @@ func TestReleaseEscrow(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	data := resp["data"].(map[string]interface{})
 	assert.Equal(t, "RELEASED", data["status"])
+}
+
+func TestCancelEscrow_Success(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	orderID := uuid.New()
+	account := &domain.EscrowAccount{
+		ID:        uuid.New(),
+		OrderID:   orderID,
+		Balance:   decimal.NewFromFloat(100.00),
+		Status:    domain.StatusFunded,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	svc.accounts[account.ID] = account
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+account.ID.String()+"/cancel", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, "CANCELLED", data["status"])
+}
+
+func TestCancelEscrow_InvalidTransition(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	orderID := uuid.New()
+	account := &domain.EscrowAccount{
+		ID:        uuid.New(),
+		OrderID:   orderID,
+		Balance:   decimal.Zero,
+		Status:    domain.StatusCreated,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	svc.accounts[account.ID] = account
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+account.ID.String()+"/cancel", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestCancelEscrow_NotFound(t *testing.T) {
+	r, _ := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/cancel", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestDisputeEscrow(t *testing.T) {

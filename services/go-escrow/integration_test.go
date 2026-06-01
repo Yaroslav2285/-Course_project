@@ -245,6 +245,24 @@ func (m *mockIntegrationEscrowSvc) Fund(_ context.Context, id uuid.UUID, amount 
 	}, nil
 }
 
+func (m *mockIntegrationEscrowSvc) Cancel(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	acc, ok := m.accounts[id.String()]
+	if !ok {
+		return nil, fmt.Errorf("escrow_account not found")
+	}
+	acc.Balance = decimal.Zero
+	acc.Status = "CANCELLED"
+	acc.UpdatedAt = time.Now().UTC()
+	return &domain.EscrowAccount{
+		ID:        id,
+		OrderID:   uuid.MustParse(acc.OrderID),
+		Balance:   decimal.Zero,
+		Status:    domain.StatusCancelled,
+		CreatedAt: acc.CreatedAt,
+		UpdatedAt: acc.UpdatedAt,
+	}, nil
+}
+
 func (m *mockIntegrationEscrowSvc) Release(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
 	acc, ok := m.accounts[id.String()]
 	if !ok {

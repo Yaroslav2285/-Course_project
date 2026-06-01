@@ -188,6 +188,50 @@ func (s *EscrowService) Release(ctx context.Context, id uuid.UUID) (*domain.Escr
 	return account, nil
 }
 
+func (s *EscrowService) Cancel(ctx context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	account, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get escrow: %w", err)
+	}
+	if account == nil {
+		return nil, fmt.Errorf("escrow_account not found: %s", id)
+	}
+
+	if !domain.IsValidTransition(account.Status, domain.StatusCancelled) {
+		return nil, fmt.Errorf("invalid transition from %s to CANCELLED", account.Status)
+	}
+
+	err = s.withTx(s.db, nil, func(tx *sql.Tx) error {
+		if err := s.repo.UpdateBalanceAndStatus(ctx, tx, id, decimal.Zero, domain.StatusCancelled); err != nil {
+			return err
+		}
+
+		txn := &domain.Transaction{
+			ID:              uuid.New(),
+			EscrowAccountID: id,
+			OrderID:         account.OrderID,
+			Amount:          account.Balance,
+			TransactionType: domain.TxnCancel,
+			Status:          "COMPLETED",
+			CreatedAt:       time.Now().UTC(),
+		}
+		return s.repo.CreateTransaction(ctx, tx, txn)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cancel escrow: %w", err)
+	}
+
+	account.Balance = decimal.Zero
+	account.Status = domain.StatusCancelled
+	account.UpdatedAt = time.Now().UTC()
+
+	s.log.Info("escrow cancelled", zap.String("id", id.String()), zap.String("amount", account.Balance.String()))
+
+	go s.emitBlockchainEvent(context.Background(), account, "CANCELLED") // #nosec G118 — intentional: async fire-and-forget
+
+	return account, nil
+}
+
 func (s *EscrowService) Dispute(ctx context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error) {
 	if reason == "" {
 		return nil, fmt.Errorf("reason is required for dispute")

@@ -217,6 +217,47 @@ func TestEscrowService_Dispute_NoReason(t *testing.T) {
 	assert.Contains(t, err.Error(), "reason is required")
 }
 
+func TestEscrowService_Cancel(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	orderID := uuid.New()
+	account, _ := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: orderID,
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+
+	account, _ = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+
+	account, err := svc.Cancel(context.Background(), account.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, domain.StatusCancelled, account.Status)
+	assert.True(t, account.Balance.Equal(decimal.Zero))
+
+	found := false
+	for _, txn := range repo.transactions {
+		if txn.TransactionType == domain.TxnCancel {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "cancel transaction should exist")
+}
+
+func TestEscrowService_Cancel_InvalidTransition(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	account, _ := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+
+	_, err := svc.Cancel(context.Background(), account.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid transition")
+}
+
 func TestEscrowService_Release(t *testing.T) {
 	repo := newMockRepo()
 	svc := newTestService(repo)

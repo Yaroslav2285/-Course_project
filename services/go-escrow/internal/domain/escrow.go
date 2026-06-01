@@ -19,6 +19,7 @@ const (
 	StatusInProgress EscrowStatus = "IN_PROGRESS"
 	StatusCompleted  EscrowStatus = "COMPLETED"
 	StatusReleased   EscrowStatus = "RELEASED"
+	StatusCancelled  EscrowStatus = "CANCELLED"
 	StatusDisputed   EscrowStatus = "DISPUTED"
 	StatusResolved   EscrowStatus = "RESOLVED"
 )
@@ -29,8 +30,8 @@ func (s EscrowStatus) String() string {
 
 var validTransitions = map[EscrowStatus]map[EscrowStatus]bool{
 	StatusCreated:    {StatusFunded: true},
-	StatusFunded:     {StatusInProgress: true},
-	StatusInProgress: {StatusCompleted: true},
+	StatusFunded:     {StatusInProgress: true, StatusCancelled: true},
+	StatusInProgress: {StatusCompleted: true, StatusCancelled: true},
 	StatusCompleted:  {StatusReleased: true, StatusDisputed: true},
 	StatusDisputed:   {StatusResolved: true},
 }
@@ -56,6 +57,7 @@ type TransactionType string
 const (
 	TxnFund    TransactionType = "FUND"
 	TxnRelease TransactionType = "RELEASE"
+	TxnCancel  TransactionType = "CANCEL"
 	TxnRefund  TransactionType = "REFUND"
 )
 
