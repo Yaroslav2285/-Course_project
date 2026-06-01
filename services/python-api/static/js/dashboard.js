@@ -6,6 +6,7 @@
 
 var serviceCache = {};
 var serviceData = [];
+var _allServices = [];
 var _actionInProgress = {};
 
 // ===== Helpers =====
@@ -220,30 +221,48 @@ async function initMyServices() {
       container.innerHTML = '<div class="dashboard-empty"><p>No products yet. Create your first product!</p></div>';
       return;
     }
-    serviceData = [];
-    var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    services.forEach(function (s) {
-      serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, category: s.category || '', discount: s.discount || '', status: s.status });
-      var idx = serviceData.length - 1;
-      html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
-        + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
-        + '<td data-label="Status">' + statusBadge(s.status) + '</td>'
-        + '<td class="order-actions" data-label="Actions">'
-        + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
-        + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
-        + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    var newContainer = document.createElement('div');
-    newContainer.id = 'services-content';
-    newContainer.innerHTML = html;
-    container.parentNode.replaceChild(newContainer, container);
-    console.log('[initMyServices] DOM replaced successfully');
+    _allServices = services;
+    renderFilteredServices(container);
   } catch (err) {
     console.error('[initMyServices] error:', err);
     container = document.getElementById('services-content') || container;
     container.innerHTML = '<div class="alert alert-error">Failed to load products: ' + escapeHtml(err.message) + '</div>';
   }
+}
+
+function renderFilteredServices(container) {
+  var query = (document.getElementById('svc-search')?.value || '').toLowerCase().trim();
+  var filtered = _allServices.filter(function (s) {
+    return s.title.toLowerCase().includes(query);
+  });
+  container = container || document.getElementById('services-content');
+  if (!container) return;
+  if (!filtered.length) {
+    container.innerHTML = '<div class="dashboard-empty"><p>No products match your search.</p></div>';
+    return;
+  }
+  serviceData = [];
+  var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  filtered.forEach(function (s) {
+    serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, category: s.category || '', discount: s.discount || '', status: s.status });
+    var idx = serviceData.length - 1;
+    html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
+      + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
+      + '<td data-label="Status">' + statusBadge(s.status) + '</td>'
+      + '<td class="order-actions" data-label="Actions">'
+      + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
+      + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
+      + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  var newContainer = document.createElement('div');
+  newContainer.id = 'services-content';
+  newContainer.innerHTML = html;
+  container.parentNode.replaceChild(newContainer, container);
+}
+
+function filterMyServices() {
+  renderFilteredServices();
 }
 
 // -- Incoming Orders --

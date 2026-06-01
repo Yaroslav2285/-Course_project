@@ -18,9 +18,12 @@
 <!-- Tab: My Services -->
 <div id="tab-services" class="dashboard-tab-content active">
   <div class="card">
-    <div class="card-header flex-between">
+    <div class="card-header flex-between" style="flex-wrap:wrap;gap:8px;">
       <span>My Products <span id="services-count" class="text-secondary"></span></span>
-      <button class="btn btn-primary btn-sm" onclick="openCreateServiceModal()" aria-label="Create new product">+ New Product</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="svc-search" class="form-control" placeholder="Search products..." oninput="filterMyServices()" style="max-width:200px;">
+        <button class="btn btn-primary btn-sm" onclick="openCreateServiceModal()" aria-label="Create new product">+ New Product</button>
+      </div>
     </div>
     <div id="services-content">
       <div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>
