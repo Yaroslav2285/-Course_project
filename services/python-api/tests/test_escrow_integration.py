@@ -82,6 +82,26 @@ async def test_release_escrow_success(client):
 
 
 @pytest.mark.asyncio
+async def test_cancel_escrow_success(client):
+    expected = {
+        "id": ESCROW_ID,
+        "order_id": ORDER_ID,
+        "balance": "0.0000",
+        "status": "CANCELLED",
+    }
+
+    with respx.mock:
+        route = respx.post(f"{BASE_URL}/v1/escrow/{ESCROW_ID}/cancel").mock(
+            return_value=Response(200, json={"data": expected})
+        )
+        result = await client.cancel_escrow(ESCROW_ID)
+
+    assert route.called
+    assert result["status"] == "CANCELLED"
+    assert result["balance"] == "0.0000"
+
+
+@pytest.mark.asyncio
 async def test_dispute_escrow_success(client):
     expected = {
         "id": ESCROW_ID,

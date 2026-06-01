@@ -178,20 +178,4 @@ async def update_order_status(
         except ValueError:
             pass
 
-    if payload.status == OrderStatus.released.value and prev_status in (
-        OrderStatus.completed.value, OrderStatus.funded.value, OrderStatus.in_progress.value,
-    ):
-        wallet_repo = WalletRepository(session)
-        try:
-            await wallet_repo.transfer(
-                from_user_id=ESCROW_USER_ID,
-                to_user_id=order.seller_id,
-                amount=order.amount,
-                reference_id=order.id,
-                txn_type="transfer",
-                description=f"Release payment for order {order.id}",
-            )
-        except ValueError:
-            pass
-
     return success_response(data=_order_to_dict(updated))

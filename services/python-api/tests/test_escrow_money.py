@@ -218,17 +218,22 @@ async def test_cancel_from_pending_no_refund(client, auth_headers, test_user, se
 
 
 @pytest.mark.asyncio
-async def test_release_payout_via_status_patch(client, auth_headers, test_user, seller, session):
+async def test_release_payout_no_double_via_status_patch(client, auth_headers, test_user, seller, session):
     svc_id = await _create_service(client, auth_headers)
     order_id = await _create_order(client, auth_headers, svc_id, seller.id, test_user.id)
     await _topup(client, auth_headers, "500.0000")
     await _fund_order(client, auth_headers, order_id)
 
+    seller_balance_before = await _get_wallet_balance_by_user_id(session, seller.id)
+
     resp = await _advance_order(client, auth_headers, order_id, "released")
     assert resp.status_code == 200
 
-    seller_balance = await _get_wallet_balance_by_user_id(session, seller.id)
-    assert seller_balance == Decimal("100.0000")
+    seller_balance_after = await _get_wallet_balance_by_user_id(session, seller.id)
+    assert seller_balance_after == seller_balance_before
+
+    escrow_wallet = await WalletRepository(session).get_escrow_wallet()
+    assert escrow_wallet.balance == Decimal("100.0000")
 
 
 @pytest.mark.asyncio
