@@ -577,7 +577,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 - `services/python-api/static/css/dashboard.css` — стили `.blockchain-indicator`, `.bc-cell`, `.bc-verified`
 - `services/python-api/templates/dashboard_client.html`, `dashboard_executor.html` — `<th>🔗</th>`
 
-**Ветка:** `step_9`
+**Ветка:** `step_9` (Phase 10 продолжается в `step_10`)
 
 **План будущей архитекутры (Phase 9 full — Solidity/Ethereum):**
 ```
@@ -600,6 +600,34 @@ get `/services/my` возвращал только 20 товаров (дефол
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Phase 10 — Category, Description, Discount, Read-only modal
+
+**Файлы:**
+- `models/services.py` — `category` (String, nullable), `discount` (Integer, nullable)
+- `schemas/services.py` — `category`, `discount` в ServiceCreate/Update/Read
+- `repositories/services.py` — create/update передают category + discount
+- `api/v1/services.py` — все эндпоинты передают category + discount
+- `alembic/versions/5982cc81659d_add_category_to_services.py` — ADD COLUMN category
+- `alembic/versions/b9cc5c4019ff_add_discount_to_services.py` — ADD COLUMN discount (вручную очищена от ложных DROP TABLE)
+- `scripts/seed_categories.py` — назначает категории 35 существующим товарам
+- `static/js/catalog.js` — `s.category` вместо mock, `s.discount` с fallback, бейдж `-X%`, two prices (original strikethrough + discounted), `auth.role !== 'client'` → readOnly modal
+- `static/js/dashboard.js` — svc-category select, svc-discount input, сохранение/восстановление в модалке
+- `static/js/order-modal.js` — `readOnly` параметр: блокировка qty+submit для seller/admin, Unit Price строка
+- `static/js/api.js` — `apiCreateService(title, ..., discount)` — новый параметр discount
+- `static/css/catalog.css` — `.service-card-description` (line-clamp, 80 chars)
+- `templates/catalog.html` — sidebar category filter `<select>`, description в карточке
+- `templates/dashboard_executor.html` — `<select id="svc-category">`, `<input id="svc-discount">`
+- `templates/order-modal.html` — description row, Unit Price row
+
+**Функциональность:**
+1. **Category** — опциональная категория услуги (16 предопределённых опций). Фильтр `?category=` в GET /services/. Сайдбар в каталоге с динамическим `<select>`. Выбор категории при создании/редактировании услуги в dashboard.
+2. **Description in card** — краткое описание (до 80 символов, `-webkit-line-clamp: 2`) под названием на карточке каталога.
+3. **Description + Unit Price in modal** — описание товара и строка Unit Price (с зачёркнутой оригинальной ценой при скидке) в модалке Place Order.
+4. **Discount** — опциональный процент скидки (0–100). В каталоге: бейдж `-X%`, оригинальная цена зачёркнута, discounted цена основная. В order modal: оригинал зачёркнут, discounted для расчёта Total. Fallback на `mock.discount` если `s.discount` не задан.
+5. **Read-only modal** — клик по карточке открывает модалку для всех ролей. Client — полный функционал (submit enabled). Seller/Admin — read-only (qty disabled, submit disabled с сообщением "Only clients can place orders"). Кнопка "Add to Cart" для non-client показывает toast-ошибку.
+
+**Ветка:** `step_10`
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -612,11 +640,11 @@ get `/services/my` возвращал только 20 товаров (дефол
 | marketplace_blockchain_sim | 8082 | ✅ healthy |
 
 **Frontend:**
-- ✅ Catalog page — filter/search/sort/pagination работают; отображается реальный email продавца
-- ✅ Auth flow — register → login → role-based redirect (client→/dashboard/client, provider→/dashboard/executor)
+- ✅ Catalog page — filter/search/sort/pagination работают; отображается реальный email продавца; категории (фильтр в сайдбаре); описание в карточке (80 chars, line-clamp); скидка (бейдж -X%, two prices)
+- ✅ Auth flow — register → login → role-based redirect (client→/dashboard/client, provider→/dashboard/executor); seller/admin видят read-only модалку заказа при клике на карточку
 - ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}, карточка баланса с автобновлением после release/cancel
-- ✅ Executor dashboard — табы: My Services (CRUD) + Incoming Orders, карточка баланса с автобновлением после release/cancel
-- ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel); отображает Seller и Buyer email
+- ✅ Executor dashboard — табы: My Services (CRUD + category + discount поля) + Incoming Orders, карточка баланса с автобновлением после release/cancel
+- ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel); отображает Seller и Buyer email; описание товара и Unit Price (зачёркнутый оригинал при скидке)
 - ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация, автообновление после release/cancel
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
 - ✅ Escrow proxy — `/v1/escrow/:order_id/:action` с Go-first → fallback на PATCH
