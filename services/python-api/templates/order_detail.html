@@ -24,13 +24,9 @@
   </div>
   <!-- Escrow Panel -->
   <div id="escrow-panel-container"></div>
-  <!-- Blockchain Audit Link -->
-  <div class="card" style="margin-top:16px;padding:16px;text-align:center;">
-    <a href="/audit/{{order_id or ''}}" id="audit-link" class="btn btn-outline btn-sm">&#128274; View Blockchain Audit Trail</a>
-  </div>
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="/api/static/js/escrow-panel.js?v=17"></script>
+<script src="/api/static/js/escrow-panel.js?v=18"></script>
 <script>initOrderDetailPage();</script>
 {% endblock %}

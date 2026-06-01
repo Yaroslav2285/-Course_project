@@ -14,12 +14,45 @@ var ESCROW_STEPS = [
 ];
 
 var _escrowActionInProgress = {};
+var _cachedAuditBlocks = null;
 
 function getEscrowStepIndex(status) {
   for (var i = 0; i < ESCROW_STEPS.length; i++) {
     if (ESCROW_STEPS[i].status === status) return i;
   }
   return -1;
+}
+
+function renderBlockchainIndicator(blocks, orderId) {
+  if (!blocks || blocks.length === 0) {
+    return '<div class="blockchain-indicator blockchain-unverified">'
+      + '<span class="blockchain-icon">&#10060;</span>'
+      + '<div class="blockchain-info">'
+      + '<div class="blockchain-title">Blockchain</div>'
+      + '<div class="blockchain-status">Unverified &mdash; no blocks recorded</div>'
+      + '</div>'
+      + '<a href="/audit/' + orderId + '" class="btn btn-sm btn-outline">Full Audit &rarr;</a>'
+      + '</div>';
+  }
+
+  var latest = blocks[blocks.length - 1];
+  var allValid = true;
+  for (var i = 1; i < blocks.length; i++) {
+    if (blocks[i].previous_hash !== blocks[i - 1].hash) {
+      allValid = false;
+      break;
+    }
+  }
+
+  return '<div class="blockchain-indicator ' + (allValid ? 'blockchain-verified' : 'blockchain-unverified') + '">'
+    + '<span class="blockchain-icon">' + (allValid ? '&#9989;' : '&#9888;&#65039;') + '</span>'
+    + '<div class="blockchain-info">'
+    + '<div class="blockchain-title">Blockchain</div>'
+    + '<div class="blockchain-status">' + (allValid ? 'Verified' : 'Integrity check failed') + ' &mdash; ' + blocks.length + ' block' + (blocks.length !== 1 ? 's' : '') + '</div>'
+    + '<div class="blockchain-meta">Latest Block #' + latest.index + ' &middot; Hash: <code>' + (latest.hash || '').substring(0, 16) + '...</code></div>'
+    + '</div>'
+    + '<a href="/audit/' + orderId + '" class="btn btn-sm btn-outline">Full Audit &rarr;</a>'
+    + '</div>';
 }
 
 function renderEscrowTimeline(currentStatus, disputed) {
@@ -147,19 +180,24 @@ async function loadEscrowPanel(orderId) {
       + '<div class="escrow-info-item"><div class="label">Created</div><div class="value">' + formatDate(orderData.created_at) + '</div></div>';
     infoGrid.innerHTML = infoHtml;
 
+    // Fetch blockchain audit data
+    var auditData = null;
+    try {
+      auditData = await apiFetchAudit(orderId);
+    } catch (e) {
+      // audit unavailable — indicator will show unverified
+    }
+    _cachedAuditBlocks = auditData && auditData.blocks ? auditData.blocks : null;
+
     var timelineHtml = '<div class="escrow-panel">'
       + '<h3>&#128220; Escrow Status</h3>'
       + renderEscrowTimeline(status, disputed)
       + '<div class="escrow-actions" id="escrow-actions">'
       + renderEscrowActions(status, orderId, role)
       + '</div>'
+      + renderBlockchainIndicator(_cachedAuditBlocks, orderId)
       + '</div>';
     container.innerHTML = timelineHtml;
-
-    var auditLink = document.getElementById('audit-link');
-    if (auditLink) {
-      auditLink.href = '/audit/' + orderId;
-    }
   } catch (err) {
     container.innerHTML = '<div class="card" style="padding:16px;margin-top:16px;"><div class="alert alert-error">Failed to load escrow data: ' + escapeHtml(err.message || 'Unknown error') + '</div></div>';
   }
@@ -269,6 +307,14 @@ async function handleEscrowPanelAction(orderId, action) {
       if (typeof initWallet === 'function') initWallet();
     }
 
+    // Refresh blockchain audit cache after action
+    try {
+      var freshAudit = await apiFetchAudit(orderId);
+      _cachedAuditBlocks = freshAudit && freshAudit.blocks ? freshAudit.blocks : null;
+    } catch (e) {
+      // audit unavailable — keep previous cache
+    }
+
     updateEscrowPanelUI(orderId, mapPanelActionToStatus(action));
   } catch (err) {
     showToast(err.message || 'Action failed', 'error');
@@ -322,14 +368,9 @@ function updateEscrowPanelUI(orderId, newStatus) {
       + '<div class="escrow-actions" id="escrow-actions">'
       + renderEscrowActions(newStatus, orderId, role)
       + '</div>'
+      + renderBlockchainIndicator(_cachedAuditBlocks, orderId)
       + '</div>';
     container.innerHTML = timelineHtml;
-  }
-
-  // Update audit link
-  var auditLink = document.getElementById('audit-link');
-  if (auditLink) {
-    auditLink.href = '/audit/' + orderId;
   }
 }
 
