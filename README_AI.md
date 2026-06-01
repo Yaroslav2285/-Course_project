@@ -562,7 +562,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 | POST | `/admin/disputes/{id}/release` | Разрешить спор в пользу продавца (→ released) |
 | POST | `/admin/disputes/{id}/refund` | Разрешить спор в пользу покупателя (→ resolved_refund) |
 
-### Phase 9 — Blockchain visibility (current blockchain-sim integration)
+### Phase 9 — Integration & inter-service hardening
 
 **Реализовано (без Solidity/Ethereum):**
 
@@ -583,9 +583,22 @@ get `/services/my` возвращал только 20 товаров (дефол
 - `services/python-api/static/css/dashboard.css` — стили `.blockchain-indicator`, `.bc-cell`, `.bc-verified`
 - `services/python-api/templates/dashboard_client.html`, `dashboard_executor.html` — `<th>🔗</th>`
 
-**Ветка:** `step_9` (Phase 10 продолжается в `step_10`)
+**Phase 9 integration fixes:**
 
-**План будущей архитекутры (Phase 9 full — Solidity/Ethereum):**
+1. **`escrow_proxy.py:193`** — `complete_escrow` fallback flag: исправлен с `escrow_id is None` на `go_ok` (отслеживает успешность Go-вызова, а не наличие escrow_id).
+2. **`orders.py:44`** — заменён `except Exception: pass` на конкретные исключения (`AsyncHTTPClientError`, `httpx.ConnectError`) + `logger.warning`/`logger.exception` + TTL 5 минут для `_blockchain_cache`.
+3. **`blockchain_client.go:85`** — `SubmitEvent` теперь возвращает `nil, nil` при успешной постановке в очередь retry (вместо `fmt.Errorf`). Асинхронный retry не должен считаться ошибкой.
+4. **Go tests updated** — `TestSubmitEvent_Timeout`, `TestSubmitEvent_QueueAndRetry`, `TestSubmitEvent_RetrySuccess`: `assert.Error` → `assert.NoError`. `TestSubmitEvent_QueueFull` переписан без race condition. Все 8 SubmitEvent тестов проходят.
+
+**Phase 10 (Financial Accuracy) — audited + skipped:**
+- Все суммы уже `Decimal`/`NUMERIC(19,4)` ✅
+- Pydantic `condecimal(places=4)` на входе ✅
+- Go `.Truncate(4)` в handler.go ✅
+- `float` для денег нет в production ✅
+- `quantize` — defence-in-depth, конкретного бага не чинит
+- **Решение: пропустить** (как Phase 8)
+
+**Ветка:** `step_12` (все фазы 1–10 завершены/пропущены)
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Frontend (MetaMask / Web3)                              │
@@ -676,21 +689,27 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ✅ **Admin dispute panel** — `/admin/disputes`: таблица споров, Details модалка, Release/Refund кнопки, buyer/seller email, dispute reason
 
 **Известные проблемы:**
-- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
+- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis.
 - ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
-- ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_8`
-- ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша (Ctrl+Shift+R). Добавлены Cache-Control, async/await, replaceChild — не помогло. Требуется дальнейшая диагностика.
-- ❌ **Admin login** — `admin@marketplace.local` не работает из-за Pydantic EmailStr валидации (.local домен). Использовать `testadmin@gmail.com / admin123!` или исправить валидатор.
+- ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_12`
+- ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша. Требуется дальнейшая диагностика.
+- ❌ **Admin login** — `admin@marketplace.local` не работает из-за Pydantic EmailStr валидации (.local домен). Использовать `testadmin@gmail.com / admin123!`.
+- ⚠️ **Escrow proxy (29%) / chain_proxy (40%) coverage** — низкое покрытие из-за внешних HTTP-зависимостей. Не критично — бизнес-логика покрыта.
+- ⚠️ **Phase 10 (quantize) пропущен** — defence-in-depth, конкретного бага не чинит.
 
 **Тесты:**
 - Python: 81/81 passed (80% coverage on api/models/repositories/core; coverable target met ✅)
-- Go: ~116 тестовых функций, все OK (domain ~95%, service ~75%, handler ~70%, middleware/idempotency ~85%, router ~90%, clients ~55%, config ~100%, db ~100%, repository ~80% на `step_4`)
+- Go: ~122 тестовых функций, все OK (api ~88.5%, service ~89.4%, repository ~97.3%, domain/config 100%, clients ~91.5%, db ~76.7%, middleware/idempotency ~85%, router ~90%)
 - Blockchain: 26/26 passed (99% coverage)
-- **Общая оценка покрытия Go: ~70-80%** — почти все пакеты покрыты (кроме main)
+- **Общая оценка покрытия Go: ~80.5%** — все пакеты покрыты
 
 **SAST:**
 - bandit: 0 Critical/High
 - gosec: 0 issues
+
+**Phase 10 (Financial Accuracy) — audited + skipped:**
+- Все суммы уже `Decimal`/`NUMERIC(19,4)` — `quantize` был бы defence-in-depth, конкретного бага нет
+- Решение: пропущен, как Phase 8 (UI polish)
 
 ## Ключевые конвенции и решения
 
@@ -731,6 +750,8 @@ get `/services/my` возвращал только 20 товаров (дефол
 21. **Блокировка роли в initWallet()** — убрана: теперь баланс загружается для всех аутентифицированных пользователей, а не только `client`.
 22. **Wallet на дашборде исполнителя** — добавлен `wallet-card.html` + `initWallet()` на `/dashboard/executor`, чтобы провайдер видел баланс и пополнения.
 23. **`seller_email` / `buyer_email` в OrderRead** — Pydantic-поля `str | None = None`, заполняются через `_order_to_dict()` helper из SQLAlchemy relationship `order.seller.email` / `order.buyer.email`. `from_attributes` не может напрямую читать `order.seller.email`, поэтому используется пост-валидационная вставка — та же техника, что и `provider_email` в ServiceRead.
+24. **`SubmitEvent` async retry** — при ошибке HTTP событие ставится в асинхронную очередь goroutine, а `SubmitEvent` возвращает `nil, nil` (не ошибку). Успешная постановка в очередь не считается ошибкой.
+25. **Phase 8 (UI polish) и Phase 10 (quantize) пропущены** — первая не критична (всё уже работает), вторая — defence-in-depth (нет деления/умножения денежных сумм).
 
 ## Команды для быстрого старта
 

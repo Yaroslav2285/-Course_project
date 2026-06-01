@@ -171,6 +171,7 @@ async def complete_escrow(
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(order_id)
 
+    go_ok = True
     try:
         if escrow_id:
             await client.advance_escrow(
@@ -182,6 +183,7 @@ async def complete_escrow(
     except EscrowClientError:
         logger = structlog.get_logger()
         logger.warning("escrow_complete_fallback", order_id=order_id)
+        go_ok = False
 
     if order.status == "in_progress":
         await repo.update_status(order, status="completed")
@@ -190,7 +192,7 @@ async def complete_escrow(
             "escrow_id": escrow_id,
             "order_id": order_id,
             "status": "completed",
-            "fallback": escrow_id is None,
+            "fallback": not go_ok,
         }
     )
 

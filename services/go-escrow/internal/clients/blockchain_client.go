@@ -75,6 +75,7 @@ func (c *BlockchainClient) SubmitEvent(ctx context.Context, event *BlockchainEve
 
 	select {
 	case c.retryQueue <- &retryItem{event: event, attempt: 1}:
+		return nil, nil
 	default:
 		c.log.Warn("retry queue full, dropping event",
 			zap.String("order_id", event.OrderID),
