@@ -327,7 +327,7 @@ async function handleEscrowAction(orderId, action) {
 async function doAction(orderId, action) {
   // Map actions to API calls
   if (action === 'cancel') {
-    await apiUpdateOrderStatus(orderId, 'cancelled');
+    await apiEscrowAction(orderId, 'cancel');
     showToast('Order cancelled', 'info');
     if (typeof initWallet === 'function') initWallet();
   } else if (action === 'fund') {

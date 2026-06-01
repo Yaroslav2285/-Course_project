@@ -163,7 +163,7 @@ async function handleEscrowPanelAction(orderId, action) {
 
   try {
     if (action === 'cancel') {
-      await apiUpdateOrderStatus(orderId, 'cancelled');
+      await apiEscrowAction(orderId, 'cancel');
       showToast('Order cancelled', 'info');
       if (typeof initWallet === 'function') initWallet();
     } else if (action === 'fund') {
