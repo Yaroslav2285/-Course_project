@@ -50,26 +50,33 @@ function renderEscrowActions(status, orderId, role) {
       if (role === 'client') {
         html += '<button type="button" class="btn-action btn-escrow-fund" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'fund\')">&#128176; Pay (Fund Escrow)</button>';
         html += '<button type="button" class="btn-action btn-action-cancel" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'cancel\')">Cancel Order</button>';
+      } else {
+        html += '<span class="text-secondary">Waiting for buyer to pay...</span>';
       }
       break;
     case 'funded':
       if (role === 'provider') {
         html += '<button type="button" class="btn-action btn-escrow-advance" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'advance\')">&#128640; Accept & Start</button>';
         html += '<button type="button" class="btn-action btn-action-cancel" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'cancel\')">Cancel</button>';
+      } else {
+        html += '<span class="text-secondary">Waiting for provider to accept...</span>';
       }
       break;
     case 'in_progress':
       if (role === 'provider') {
         html += '<button type="button" class="btn-action btn-escrow-complete" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'complete\')">&#9989; Complete Work</button>';
-      }
-      if (role === 'client') {
+      } else if (role === 'client') {
         html += '<button type="button" class="btn-action btn-action-dispute" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'dispute\')">&#9888;&#65039; Open Dispute</button>';
+      } else {
+        html += '<span class="text-secondary">Order in progress</span>';
       }
       break;
     case 'completed':
       if (role === 'client') {
         html += '<button type="button" class="btn-action btn-escrow-release" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'release\')">&#128184; Confirm & Release Payment</button>';
         html += '<button type="button" class="btn-action btn-action-dispute" onclick="handleEscrowPanelAction(\'' + orderId + '\',\'dispute\')">&#9888;&#65039; Open Dispute</button>';
+      } else {
+        html += '<span class="text-secondary">Waiting for buyer to confirm release...</span>';
       }
       break;
     case 'released':
@@ -105,7 +112,8 @@ async function loadEscrowPanel(orderId) {
     }
 
     var rawStatus = escrow && escrow.status ? escrow.status : (orderData.status || 'pending');
-    var status = rawStatus.toLowerCase();
+    var goToOrder = { created: 'pending', funded: 'funded', in_progress: 'in_progress', completed: 'completed', released: 'released', cancelled: 'cancelled', disputed: 'disputed' };
+    var status = goToOrder[rawStatus.toLowerCase()] || (orderData.status || 'pending');
     var disputed = status === 'disputed';
     var role = checkAuth().role || 'client';
 
