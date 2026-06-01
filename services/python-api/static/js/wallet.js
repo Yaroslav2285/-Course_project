@@ -109,6 +109,8 @@ async function loadWalletData() {
     renderWalletBalance();
     renderWalletHistory();
   } catch (err) {
+    console.error('Wallet load error:', err);
+    renderWalletBalanceFallback();
     showToast('Ошибка загрузки кошелька: ' + (err.message || 'Unknown'), 'error');
   } finally {
     _walletState.loading = false;
@@ -122,7 +124,23 @@ function renderWalletBalance() {
 
   if (skeletonEl) skeletonEl.style.display = 'none';
   if (contentEl) contentEl.style.display = 'block';
-  if (valueEl) valueEl.textContent = _walletFormatAmount(_walletState.balance);
+
+  if (valueEl) {
+    valueEl.textContent = _walletFormatAmount(_walletState.balance);
+    valueEl.style.color = _walletState.balance >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+  }
+}
+
+function renderWalletBalanceFallback() {
+  var skeletonEl = document.getElementById('wallet-balance-skeleton');
+  var contentEl = document.getElementById('wallet-balance-content');
+  var valueEl = document.getElementById('wallet-balance-value');
+  if (skeletonEl) skeletonEl.style.display = 'none';
+  if (contentEl) contentEl.style.display = 'block';
+  if (valueEl) {
+    valueEl.textContent = '0 ₽';
+    valueEl.style.color = '';
+  }
 }
 
 function renderWalletHistory() {
@@ -289,7 +307,7 @@ function stopWalletSync() {
 
 function initWallet() {
   var auth = checkAuth();
-  if (!auth.isAuthenticated || auth.role !== 'client') return;
+  if (!auth.isAuthenticated) return;
 
   loadWalletData();
   startWalletSync();

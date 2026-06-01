@@ -384,7 +384,7 @@ services/python-api/
 1. **`WalletRepository.transfer(from_uid, to_uid, amount)`** — атомарный перевод между
    кошельками двух пользователей: дебет отправителя + кредит получателя + две транзакции.
 2. **Escrow holding account** — системный пользователь `escrow@marketplace.local`
-   (UUID `00000000-0000-0000-0000-000000000001`), создаётся лениво при первом `fund`.
+   (UUID `1133d650-e7d4-41de-8877-c359682903a4`), создаётся лениво при первом `fund`.
 3. **Fund** (`POST /v1/wallet/pay`): buyer → escrow holding (вместо простого списания).
 4. **Release** (`POST /v1/escrow/{id}/release` + fallback `PATCH /orders/{id}/status`):
    escrow holding → seller.
@@ -398,6 +398,12 @@ services/python-api/
 - `api/v1/escrow_proxy.py` — release переводит escrow → seller
 - `api/v1/orders.py` — cancel → refund, release → payout (fallback)
 - `models/wallet.py` — добавлен `TransactionType.transfer`
+- `tests/test_escrow_money.py` — 11 тестов escrow money flow
+- `static/js/escrow-panel.js` — `initWallet()` после release/cancel
+- `static/js/dashboard.js` — `initWallet()` после release/cancel
+- `templates/dashboard_executor.html` — добавлена `wallet-card.html` + `wallet.js` + `initWallet()`
+- `static/js/wallet.js` — убрана привязка к роли `client` (теперь для всех аутентифицированных); добавлен `renderWalletBalanceFallback()`
+- `templates/wallet.html`, `templates/dashboard_client.html`, `templates/dashboard_executor.html` — защищённый вызов `if (typeof initWallet === 'function')`
 
 ## Текущее состояние
 
@@ -413,10 +419,10 @@ services/python-api/
 **Frontend:**
 - ✅ Catalog page — filter/search/sort/pagination работают
 - ✅ Auth flow — register → login → role-based redirect (client→/dashboard/client, provider→/dashboard/executor)
-- ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}
-- ✅ Executor dashboard — табы: My Services (CRUD) + Incoming Orders
+- ✅ Client dashboard — таблица заказов с "Details" → /orders/{id}, карточка баланса с автобновлением после release/cancel
+- ✅ Executor dashboard — табы: My Services (CRUD) + Incoming Orders, карточка баланса с автобновлением после release/cancel
 - ✅ Order detail — escrow panel с 5-шаговым таймлайном + action кнопки (fund/advance/complete/release/dispute/cancel)
-- ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация
+- ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация, автообновление после release/cancel
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
 - ✅ Escrow proxy — `/v1/escrow/:order_id/:action` с Go-first → fallback на PATCH
 - ✅ Wallet pay — `POST /v1/wallet/pay` переводит buyer → escrow holding
@@ -431,7 +437,7 @@ services/python-api/
 - ❌ **Go-escrow не держит реальные средства** — Python API передаёт `amount="0"` при fund, деньги только в Python БД. Для продакшена нужен escrow-счёт в Go.
 
 **Тесты:**
-- Python: 42/42 passed
+- Python: 53/53 passed
 - Go: все 6 пакетов OK
 - Blockchain: 26/26 passed (99% coverage)
 
@@ -475,6 +481,8 @@ services/python-api/
 18. **Wallet/pay (escrow fund)** — `POST /v1/wallet/pay` переводит сумму с кошелька покупателя на escrow holding account (системный пользователь `escrow@marketplace.local`). Go-escrow НЕ вызывается (все средства в Python БД).
 19. **Escrow release выплачивает продавцу** — при `release` (через `POST /v1/escrow/{id}/release` или fallback `PATCH /orders/{id}/status`) деньги переводятся с escrow holding на кошелёк продавца через `WalletRepository.transfer()`.
 20. **`WalletRepository.transfer(from_uid, to_uid, amount)`** — атомарный перевод: дебет отправителя + кредит получателя + две транзакции. Используется для escrow fund (buyer→escrow), release (escrow→seller) и cancel refund (escrow→buyer).
+21. **Блокировка роли в initWallet()** — убрана: теперь баланс загружается для всех аутентифицированных пользователей, а не только `client`.
+22. **Wallet на дашборде исполнителя** — добавлен `wallet-card.html` + `initWallet()` на `/dashboard/executor`, чтобы провайдер видел баланс и пополнения.
 
 ## Команды для быстрого старта
 

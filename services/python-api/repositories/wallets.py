@@ -11,7 +11,7 @@ from models.wallet import Wallet, Transaction, TransactionType, TransactionStatu
 from models.users import User
 from repositories.base import RepositoryBase
 
-ESCROW_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+ESCROW_USER_ID = UUID("1133d650-e7d4-41de-8877-c359682903a4")
 
 
 class WalletRepository(RepositoryBase[Wallet]):
@@ -35,7 +35,9 @@ class WalletRepository(RepositoryBase[Wallet]):
             raise
 
     async def update_balance(self, wallet: Wallet, delta: Decimal) -> Wallet:
-        return await self.update(wallet, balance=wallet.balance + delta)
+        wallet.balance = wallet.balance + delta
+        await self.session.flush()
+        return wallet
 
     async def get_escrow_wallet(self) -> Wallet:
         escrow_user = await self.session.get(User, ESCROW_USER_ID)
@@ -43,12 +45,19 @@ class WalletRepository(RepositoryBase[Wallet]):
             escrow_user = User(
                 id=ESCROW_USER_ID,
                 email="escrow@marketplace.local",
-                hashed_password="*",  # system account, never logs in
+                hashed_password="*",
                 role="admin",
             )
             self.session.add(escrow_user)
             await self.session.flush()
-        return await self.get_or_create(ESCROW_USER_ID)
+        wallet = await self.get_by_user_id(ESCROW_USER_ID)
+        if not wallet:
+            from uuid import uuid4 as _uuid4
+            wallet = Wallet(id=_uuid4(), user_id=ESCROW_USER_ID, balance=Decimal("0"))
+            self.session.add(wallet)
+            await self.session.flush()
+            return wallet
+        return wallet
 
     async def transfer(
         self,
@@ -59,8 +68,16 @@ class WalletRepository(RepositoryBase[Wallet]):
         txn_type: str = "transfer",
         description: str | None = None,
     ) -> tuple[Transaction, Transaction]:
-        from_wallet = await self.get_or_create(from_user_id)
-        to_wallet = await self.get_or_create(to_user_id)
+        from_wallet = (
+            await self.get_escrow_wallet()
+            if from_user_id == ESCROW_USER_ID
+            else await self.get_or_create(from_user_id)
+        )
+        to_wallet = (
+            await self.get_escrow_wallet()
+            if to_user_id == ESCROW_USER_ID
+            else await self.get_or_create(to_user_id)
+        )
 
         if from_wallet.balance < amount:
             raise ValueError("Insufficient balance")
