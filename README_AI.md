@@ -65,6 +65,10 @@ Redis :6377 — кеширование (зарезервировано)
 - `.gitignore`, `.editorconfig`, `.gitattributes`, `.pre-commit-config.yaml`
 - `.github/workflows/ci.yml` — GitHub Actions: lint (ruff, go vet), test (pytest, go test), SAST (bandit, gosec) на push/PR
 - **Проверка Phase 1: 7/7 ✅**
+- **Проверка Phase 2: models/migrations — 6/6 ✅** (найден и исправлен VARCHAR(11)→VARCHAR(20) для `transactions.type`)
+- **Проверка Phase 3: repositories/API — 28/28 эндпоинтов ✅** (исправлен regex статусов, DB-level фильтрация)
+- **Проверка Phase 4: blockchain-sim — 4 эндпоинта, 26 тестов, 99% coverage ✅**
+- **Проверка Phase 5: testing — 81 тест, 80% Python coverage ✅**
 
 ### Этап 2 — Модели данных и миграции
 
@@ -634,7 +638,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 7. **Sortable orders** — кликабельные заголовки Amount/Status/Date в таблицах заказов клиента и исполнителя. Первый клик — по возрастанию, второй — по убыванию. Серый `⇅` на неактивных, синий `▲`/`▼` на активной колонке.
 8. **Card method unavailable** — в модалке пополнения кошелька способ "Банковская карта" отображается как disabled с текстом "(недоступно)".
 
-**Ветка:** `step_10` (Phase 10); `step_12` (Phase 1 verification — CI)
+**Ветка:** `step_10` (Phase 10); `step_12` (Phase 1–5 verification — CI + fixes + coverage 80%)
 
 ## Текущее состояние
 
@@ -679,7 +683,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ❌ **Admin login** — `admin@marketplace.local` не работает из-за Pydantic EmailStr валидации (.local домен). Использовать `testadmin@gmail.com / admin123!` или исправить валидатор.
 
 **Тесты:**
-- Python: 54/54 passed
+- Python: 81/81 passed (80% coverage on api/models/repositories/core; coverable target met ✅)
 - Go: ~116 тестовых функций, все OK (domain ~95%, service ~75%, handler ~70%, middleware/idempotency ~85%, router ~90%, clients ~55%, config ~100%, db ~100%, repository ~80% на `step_4`)
 - Blockchain: 26/26 passed (99% coverage)
 - **Общая оценка покрытия Go: ~70-80%** — почти все пакеты покрыты (кроме main)
