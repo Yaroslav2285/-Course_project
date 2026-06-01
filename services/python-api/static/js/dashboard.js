@@ -36,8 +36,10 @@ function _updateSortArrows(container, field, dir) {
     if (!arrow) return;
     if (th.getAttribute('data-sort') === field) {
       arrow.textContent = dir === 'asc' ? ' ▲' : ' ▼';
+      arrow.className = 'sort-arrow active';
     } else {
-      arrow.textContent = '';
+      arrow.textContent = ' ⇅';
+      arrow.className = 'sort-arrow';
     }
   });
 }

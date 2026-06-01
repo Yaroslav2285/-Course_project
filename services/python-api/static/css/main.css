@@ -1061,10 +1061,16 @@ tr:hover td {
 .sortable {
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
 }
 .sortable:hover {
   color: var(--primary-color);
 }
 .sort-arrow {
   font-size: 0.75rem;
+  color: var(--gray-400);
+  margin-left: 2px;
+}
+.sort-arrow.active {
+  color: var(--primary-color);
 }
