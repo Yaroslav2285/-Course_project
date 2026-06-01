@@ -165,7 +165,7 @@ CREATED → FUNDED → IN_PROGRESS → COMPLETED → RELEASED
 | POST | `/escrow/{id}/advance` | Продвинуть статус (FUNDED→IN_PROGRESS→COMPLETED) |
 | GET | `/health` | Healthcheck |
 
-**Тесты:** api (15), clients (5), domain (50+), integration (2), service (9) — все проходят
+**Тесты:** 58 test functions: domain (50+), service (9), handler (15), clients (5), postgres integration (3), top-level integration (2). **Покрытие по пакетам:** domain ~95% (отлично), service ~55%, handler ~50%, clients ~45%, repository ~5%, middleware/idempotency/router/config/db/main ~0%. **Общая оценка: ~30-40%**
 
 ### Этап 5 — Blockchain Simulator
 
@@ -503,13 +503,15 @@ Go не мог корректно обработать cancel (не было CAN
 - ✅ Footer — copyright на всех страницах, прижат к низу
 
 **Известные проблемы:**
-- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis.
-- ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД.
+- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
+- ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
+- ❌ **Go test coverage gaps (~30-40%)** — middleware, idempotency, router, config, db, blockchain events, retry queue, и бóльшая часть error paths не покрыты тестами
 
 **Тесты:**
-- Python: 53/53 passed
-- Go: все 6 пакетов OK (+ Cancel handler/service/domain/integration)
+- Python: 54/54 passed
+- Go: 58 тестовых функций, все OK (domain ~95%, service ~55%, handler ~50%, clients ~45%, repository ~5%, middleware+idempotency+router+config+db+main ~0%)
 - Blockchain: 26/26 passed (99% coverage)
+- **Общая оценка покрытия Go: ~30-40%** — домен отлично, инфраструктура не покрыта
 
 **SAST:**
 - bandit: 0 Critical/High
