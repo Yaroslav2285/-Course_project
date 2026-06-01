@@ -2,7 +2,6 @@
 # LR #10: Multi-lang/REST — bridge frontend → blockchain-sim
 # LR #12: AI Integration — fallback mock when blockchain unavailable
 
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -44,6 +43,8 @@ async def get_audit(
     try:
         order = await repo.get_by_id(UUID(order_id))
     except Exception:
+        import structlog
+        structlog.get_logger().warning("chain_audit_order_not_found", order_id=order_id)
         order = None
 
     blocks = []

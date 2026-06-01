@@ -18,6 +18,7 @@ class OrderStatus(str, enum.Enum):
     released = "released"
     cancelled = "cancelled"
     disputed = "disputed"
+    resolved = "resolved"
 
 
 class Order(Base):

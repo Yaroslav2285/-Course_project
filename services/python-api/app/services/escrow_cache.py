@@ -37,7 +37,7 @@ async def close() -> None:
         try:
             await _client.close()
         except Exception:
-            pass
+            logger.warning("redis_close_error")
     _client = None
     _fallback_cache.clear()
     _fallback_data.clear()
@@ -47,14 +47,25 @@ async def escrow_exists(order_id: str) -> bool:
     return await get_escrow_id(order_id) is not None
 
 
+async def _redis_op(r, key: str, op: str = "get", value=None, **kwargs):
+    try:
+        if op == "get":
+            return await r.get(key)
+        elif op == "setex":
+            return await r.setex(key, kwargs.get("ttl", ESCROW_CACHE_TTL), value)
+        elif op == "delete":
+            return await r.delete(key)
+    except RuntimeError:
+        return None
+
+
 async def cache_set(order_id: str, escrow_id: str, data: dict | None = None) -> None:
     r = await _get_client()
     if r is not None and r is not False:
-        key = f"escrow:order:{order_id}:id"
-        await r.setex(key, ESCROW_CACHE_TTL, escrow_id)
+        await _redis_op(r, f"escrow:order:{order_id}:id", "setex", escrow_id)
         if data:
             data_key = f"escrow:id:{escrow_id}:data"
-            await r.setex(data_key, ESCROW_CACHE_TTL, json.dumps(data, default=str))
+            await _redis_op(r, data_key, "setex", json.dumps(data, default=str))
     _fallback_cache[order_id] = escrow_id
     if data:
         _fallback_data[escrow_id] = data
@@ -63,10 +74,10 @@ async def cache_set(order_id: str, escrow_id: str, data: dict | None = None) -> 
 async def cache_get(order_id: str) -> dict[str, Any] | None:
     r = await _get_client()
     if r is not None and r is not False:
-        escrow_id = await r.get(f"escrow:order:{order_id}:id")
+        escrow_id = await _redis_op(r, f"escrow:order:{order_id}:id")
         if escrow_id:
             data_key = f"escrow:id:{escrow_id}:data"
-            raw = await r.get(data_key)
+            raw = await _redis_op(r, data_key)
             if raw:
                 try:
                     data = json.loads(raw)
@@ -87,7 +98,7 @@ async def cache_get(order_id: str) -> dict[str, Any] | None:
 async def get_escrow_id(order_id: str) -> str | None:
     r = await _get_client()
     if r is not None and r is not False:
-        val = await r.get(f"escrow:order:{order_id}:id")
+        val = await _redis_op(r, f"escrow:order:{order_id}:id")
         if val:
             return val
     return _fallback_cache.get(order_id)
@@ -96,10 +107,10 @@ async def get_escrow_id(order_id: str) -> str | None:
 async def delete(order_id: str) -> None:
     r = await _get_client()
     if r is not None and r is not False:
-        escrow_id = await r.get(f"escrow:order:{order_id}:id")
-        await r.delete(f"escrow:order:{order_id}:id")
+        escrow_id = await _redis_op(r, f"escrow:order:{order_id}:id")
+        await _redis_op(r, f"escrow:order:{order_id}:id", "delete")
         if escrow_id:
-            await r.delete(f"escrow:id:{escrow_id}:data")
+            await _redis_op(r, f"escrow:id:{escrow_id}:data", "delete")
     escrow_id = _fallback_cache.pop(order_id, None)
     if escrow_id:
         _fallback_data.pop(escrow_id, None)

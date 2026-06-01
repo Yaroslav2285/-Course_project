@@ -63,7 +63,6 @@ async def pay_order(
 
     idempotency_key = f"pay_{order.id}"
     ec = EscrowClient()
-    go_ok = False
     try:
         escrow_id = await get_escrow_id(str(order.id))
         if not escrow_id:
@@ -81,7 +80,8 @@ async def pay_order(
         )
     except EscrowClientError as exc:
         if exc.code == "SERVICE_UNAVAILABLE":
-            pass
+            import structlog
+            structlog.get_logger().warning("escrow_service_unavailable", order_id=str(order.id))
         else:
             await wallet_repo.transfer(
                 from_user_id=ESCROW_USER_ID,

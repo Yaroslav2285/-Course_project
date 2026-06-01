@@ -7,11 +7,12 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.wallet import Wallet, Transaction, TransactionType, TransactionStatus
+from models.wallet import Wallet, Transaction, TransactionStatus
+from core.config import settings
 from models.users import User
 from repositories.base import RepositoryBase
 
-ESCROW_USER_ID = UUID("1133d650-e7d4-41de-8877-c359682903a4")
+ESCROW_USER_ID = UUID(settings.ESCROW_USER_ID)
 
 
 class WalletRepository(RepositoryBase[Wallet]):

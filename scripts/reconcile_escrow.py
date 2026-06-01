@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 GO_URL = os.getenv("GO_ESCROW_BASE_URL", "http://localhost:8081")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./marketplace.db")
-ESCROW_USER_ID = UUID("1133d650-e7d4-41de-8877-c359682903a4")
+ESCROW_USER_ID = UUID(os.getenv("ESCROW_USER_ID", "1133d650-e7d4-41de-8877-c359682903a4"))
 
 
 async def reconcile():

@@ -21,10 +21,10 @@ Called by Go Escrow after each valid state-machine transition.
 ```json
 {
   "order_id": "uuid",
-  "action": "CREATED|FUNDED|RELEASED|DISPUTED",
+  "action": "CREATED|FUNDED|IN_PROGRESS|COMPLETED|RELEASED|CANCELLED|DISPUTED",
   "data": {
     "escrow_id": "uuid",
-    "status": "CREATED|FUNDED|RELEASED|DISPUTED",
+    "status": "CREATED|FUNDED|IN_PROGRESS|COMPLETED|RELEASED|CANCELLED|DISPUTED",
     "amount": "100.0000"
   }
 }
@@ -51,7 +51,10 @@ Called by Go Escrow after each valid state-machine transition.
 |---|---|---|
 | `CREATED` | Escrow account created | New escrow account opened |
 | `FUNDED` | Escrow funded | Funds deposited into escrow |
+| `IN_PROGRESS` | Escrow advanced to in_progress | Service delivery started |
+| `COMPLETED` | Escrow advanced to completed | Service delivery completed |
 | `RELEASED` | Escrow released | Funds released to provider |
+| `CANCELLED` | Escrow cancelled | Funds returned to buyer |
 | `DISPUTED` | Dispute opened | Dispute raised on escrow |
 
 ## Retry Policy

@@ -61,6 +61,39 @@
 | `404` | `NOT_FOUND` |
 | `409` | `INVALID_TRANSITION` |
 
+### POST /v1/escrow/{id}/cancel — Cancel Escrow
+**Request:** `{}`
+**Responses:**
+| Code | Description |
+|---|---|
+| `200` | Success — returns updated `EscrowAccount` (balance=0, status=CANCELLED) |
+| `400` | `INVALID_UUID` |
+| `404` | `NOT_FOUND` |
+| `409` | `INVALID_TRANSITION` — only allowed from FUNDED or IN_PROGRESS |
+
+### POST /v1/escrow/{id}/advance — Advance Escrow Status
+**Request:**
+```json
+{"status": "IN_PROGRESS|COMPLETED"}
+```
+**Responses:**
+| Code | Description |
+|---|---|
+| `200` | Success — returns updated `EscrowAccount` |
+| `400` | `INVALID_UUID` |
+| `404` | `NOT_FOUND` |
+| `409` | `INVALID_TRANSITION` |
+
+### POST /v1/escrow/{id}/complete — Complete Escrow (shortcut)
+**Request:** `{}`
+**Responses:**
+| Code | Description |
+|---|---|
+| `200` | Success — status advanced to COMPLETED |
+| `400` | `INVALID_UUID` |
+| `404` | `NOT_FOUND` |
+| `409` | `INVALID_TRANSITION` |
+
 ### POST /v1/escrow/{id}/dispute — Open Dispute
 **Request:**
 ```json
@@ -89,7 +122,7 @@
   "id": "uuid",
   "order_id": "uuid",
   "balance": "100.0000",
-  "status": "CREATED|FUNDED|IN_PROGRESS|COMPLETED|RELEASED|DISPUTED|RESOLVED",
+  "status": "CREATED|FUNDED|IN_PROGRESS|COMPLETED|RELEASED|CANCELLED|DISPUTED|RESOLVED",
   "created_at": "2026-05-27T12:00:00Z",
   "updated_at": "2026-05-27T12:00:00Z"
 }
@@ -98,8 +131,11 @@
 ## State Machine
 ```
 CREATED → FUNDED → IN_PROGRESS → COMPLETED → RELEASED
-                                         ↓
-                                      DISPUTED → RESOLVED
+            │           │                    │
+            │           │                    ↓
+            │           │               DISPUTED → RESOLVED
+            │           │
+            └──→ CANCELLED ←──┘
 ```
 
 ## Error Codes

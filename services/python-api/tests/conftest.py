@@ -8,7 +8,6 @@ os.environ["DB_URL"] = "sqlite+aiosqlite:///./test.db"
 from typing import AsyncGenerator
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event

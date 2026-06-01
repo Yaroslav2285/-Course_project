@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     GO_ESCROW_BASE_URL: str = "http://go-escrow:8081"
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    ESCROW_USER_ID: str = "1133d650-e7d4-41de-8877-c359682903a4"
     LOG_LEVEL: str = "INFO"
 
     @property

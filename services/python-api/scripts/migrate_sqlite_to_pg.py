@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from models.base import Base
 from models.orders import Order
 from models.services import Service
 from models.users import User

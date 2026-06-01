@@ -1,23 +1,21 @@
 import uuid
-from typing import Any
 
+import structlog
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.escrow_client import EscrowClient, EscrowClientError
-from app.services.escrow_cache import cache_set, cache_get, get_escrow_id, delete as cache_delete
+from app.services.escrow_cache import cache_set, cache_get, get_escrow_id
 from core.db import get_db
 from core.deps import get_current_user
 from core.exceptions import NotFoundException
 from core.responses import success_response
+from models.orders import Order
 from repositories.orders import OrderRepository
 from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.users import UserRead
 
 router = APIRouter()
-
-_escrow_cache: dict[str, str] = {}
-_escrow_data: dict[str, dict[str, Any]] = {}
 
 
 def _get_escrow_client() -> EscrowClient:
@@ -50,7 +48,8 @@ async def get_escrow_by_order(
             await _cache_set(order_id, escrow_id, data)
             return success_response(data=data)
     except EscrowClientError:
-        pass
+        logger = structlog.get_logger()
+        logger.warning("escrow_get_fallback", order_id=order_id)
 
     raise NotFoundException("Escrow not found for this order")
 
@@ -69,9 +68,10 @@ async def fund_escrow(
 
     escrow_id = await get_escrow_id(order_id)
     client = _get_escrow_client()
+    go_ok = True
 
-    try:
-        if not escrow_id:
+    if not escrow_id:
+        try:
             result = await client.create_escrow(
                 order_id=order_id,
                 amount=str(order.amount),
@@ -79,35 +79,34 @@ async def fund_escrow(
             )
             escrow_id = result.get("id") or result.get("escrow_id") or str(uuid.uuid4())
             await _cache_set(order_id, escrow_id, result)
+        except EscrowClientError:
+            logger = structlog.get_logger()
+            logger.warning("escrow_create_fallback", order_id=order_id)
+            go_ok = False
 
-        await client.fund_escrow(
-            escrow_id=escrow_id,
-            amount=str(order.amount),
-            idempotency_key=idempotency_key,
-        )
+    if go_ok and escrow_id:
+        try:
+            await client.fund_escrow(
+                escrow_id=escrow_id,
+                amount=str(order.amount),
+                idempotency_key=idempotency_key,
+            )
+        except EscrowClientError:
+            logger = structlog.get_logger()
+            logger.warning("escrow_fund_fallback", order_id=order_id, escrow_id=escrow_id)
+            go_ok = False
 
-        if order and order.status == "pending":
-            await repo.update_status(order, status="funded")
-
-        return success_response(
-            data={
-                "escrow_id": escrow_id,
-                "order_id": order_id,
-                "status": "funded",
-            }
-        )
-    except EscrowClientError:
-        if order.status != "pending":
-            raise NotFoundException("Order is not in pending state")
+    if order.status == "pending":
         await repo.update_status(order, status="funded")
-        return success_response(
-            data={
-                "escrow_id": None,
-                "order_id": order_id,
-                "status": "funded",
-                "fallback": True,
-            }
-        )
+
+    return success_response(
+        data={
+            "escrow_id": escrow_id if go_ok else None,
+            "order_id": order_id,
+            "status": "funded",
+            "fallback": not go_ok,
+        }
+    )
 
 
 @router.post("/{order_id}/advance")
@@ -120,43 +119,33 @@ async def advance_escrow(
     target_status = body.get("status", "IN_PROGRESS")
     client = _get_escrow_client()
     escrow_id = await get_escrow_id(order_id)
+    go_ok = True
 
-    try:
-        if escrow_id:
+    if escrow_id:
+        try:
             await client.advance_escrow(escrow_id=escrow_id, status=target_status)
+        except EscrowClientError:
+            logger = structlog.get_logger()
+            logger.warning("escrow_advance_fallback", order_id=order_id, target=target_status)
+            go_ok = False
 
-        valid = target_status.lower()
-        if valid not in ("in_progress", "funded", "completed"):
-            valid = "funded"
-        repo = OrderRepository(session)
-        order = await repo.get_by_id(uuid.UUID(order_id))
-        if not order:
-            raise NotFoundException("Order not found")
-        await repo.update_status(order, status=valid)
-        return success_response(
-            data={
-                "escrow_id": escrow_id,
-                "order_id": order_id,
-                "status": valid,
-            }
-        )
-    except EscrowClientError:
-        valid = target_status.lower()
-        if valid not in ("in_progress", "funded", "completed"):
-            valid = "in_progress"
-        repo = OrderRepository(session)
-        order = await repo.get_by_id(uuid.UUID(order_id))
-        if not order:
-            raise NotFoundException("Order not found")
-        await repo.update_status(order, status=valid)
-        return success_response(
-            data={
-                "escrow_id": None,
-                "order_id": order_id,
-                "status": valid,
-                "fallback": True,
-            }
-        )
+    valid = target_status.lower()
+    if valid not in ("in_progress", "funded", "completed"):
+        valid = "funded"
+
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+    await repo.update_status(order, status=valid)
+    return success_response(
+        data={
+            "escrow_id": escrow_id if go_ok else None,
+            "order_id": order_id,
+            "status": valid,
+            "fallback": not go_ok,
+        }
+    )
 
 
 @router.post("/{order_id}/complete")
@@ -175,7 +164,8 @@ async def complete_escrow(
                 escrow_id=escrow_id, idempotency_key=idempotency_key
             )
     except EscrowClientError:
-        pass
+        logger = structlog.get_logger()
+        logger.warning("escrow_complete_fallback", order_id=order_id)
 
     repo = OrderRepository(session)
     order = await repo.get_by_id(uuid.UUID(order_id))
@@ -209,7 +199,8 @@ async def release_escrow(
                 escrow_id=escrow_id, idempotency_key=idempotency_key
             )
     except EscrowClientError:
-        pass
+        logger = structlog.get_logger()
+        logger.warning("escrow_release_fallback", order_id=order_id)
 
     repo = OrderRepository(session)
     order = await repo.get_by_id(uuid.UUID(order_id))
@@ -227,8 +218,9 @@ async def release_escrow(
             txn_type="transfer",
             description=f"Release payment for order {order.id}",
         )
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger = structlog.get_logger()
+        logger.warning("escrow_release_transfer_failed", order_id=order_id, error=str(exc))
 
     return success_response(
         data={
@@ -260,7 +252,8 @@ async def dispute_escrow(
                 idempotency_key=idempotency_key,
             )
     except EscrowClientError:
-        pass
+        logger = structlog.get_logger()
+        logger.warning("escrow_dispute_fallback", order_id=order_id)
 
     repo = OrderRepository(session)
     order = await repo.get_by_id(uuid.UUID(order_id))
@@ -277,15 +270,13 @@ async def dispute_escrow(
     )
 
 
-@router.post("/{order_id}/cancel")
-async def cancel_proxy(
-    order_id: str,
-    idempotency_key: str | None = Header(None),
-    current_user: UserRead = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db),
-):
+async def _cancel_escrow_internal(
+    order: Order,
+    session: AsyncSession,
+    idempotency_key: str | None = None,
+) -> dict:
     client = _get_escrow_client()
-    escrow_id = await get_escrow_id(order_id)
+    escrow_id = await get_escrow_id(str(order.id))
 
     try:
         if escrow_id:
@@ -293,12 +284,10 @@ async def cancel_proxy(
                 escrow_id=escrow_id, idempotency_key=idempotency_key
             )
     except EscrowClientError:
-        pass
+        logger = structlog.get_logger()
+        logger.warning("escrow_cancel_fallback", order_id=str(order.id), escrow_id=escrow_id)
 
     repo = OrderRepository(session)
-    order = await repo.get_by_id(uuid.UUID(order_id))
-    if not order:
-        raise NotFoundException("Order not found")
     await repo.update_status(order, status="cancelled")
 
     wallet_repo = WalletRepository(session)
@@ -311,14 +300,29 @@ async def cancel_proxy(
             txn_type="refund",
             description=f"Refund for cancelled order {order.id}",
         )
-    except ValueError:
-        pass
+    except ValueError as exc:
+        logger = structlog.get_logger()
+        logger.warning("escrow_refund_failed", order_id=str(order.id), error=str(exc))
 
-    return success_response(
-        data={
-            "escrow_id": escrow_id,
-            "order_id": order_id,
-            "status": "cancelled",
-            "fallback": escrow_id is None,
-        }
-    )
+    return {
+        "escrow_id": escrow_id,
+        "order_id": str(order.id),
+        "status": "cancelled",
+        "fallback": escrow_id is None,
+    }
+
+
+@router.post("/{order_id}/cancel")
+async def cancel_proxy(
+    order_id: str,
+    idempotency_key: str | None = Header(None),
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+
+    result = await _cancel_escrow_internal(order, session, idempotency_key)
+    return success_response(data=result)

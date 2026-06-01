@@ -12,11 +12,8 @@ from core.exceptions import NotFoundException
 from core.responses import success_response
 from models.orders import Order, OrderStatus
 from repositories.orders import OrderRepository
-from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.orders import OrderCreate, OrderRead, OrderStatusUpdate
 from schemas.users import UserRead
-from app.services.escrow_client import EscrowClient, EscrowClientError
-from app.services.escrow_cache import get_escrow_id
 
 router = APIRouter()
 
@@ -64,7 +61,7 @@ async def list_orders(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(
-        None, pattern=r"^(pending|funded|released|cancelled|disputed)$"
+        None, pattern=r"^(pending|funded|released|cancelled|disputed|resolved)$"
     ),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
@@ -89,7 +86,7 @@ async def list_sold_orders(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(
-        None, pattern=r"^(pending|funded|released|cancelled|disputed)$"
+        None, pattern=r"^(pending|funded|released|cancelled|disputed|resolved)$"
     ),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
@@ -157,25 +154,7 @@ async def update_order_status(
     if payload.status == OrderStatus.cancelled.value and prev_status in (
         OrderStatus.funded.value, OrderStatus.in_progress.value,
     ):
-        try:
-            escrow_id = await get_escrow_id(str(order.id))
-            if escrow_id:
-                ec = EscrowClient()
-                await ec.cancel_escrow(escrow_id=escrow_id)
-        except EscrowClientError:
-            pass
-
-        wallet_repo = WalletRepository(session)
-        try:
-            await wallet_repo.transfer(
-                from_user_id=ESCROW_USER_ID,
-                to_user_id=order.buyer_id,
-                amount=order.amount,
-                reference_id=order.id,
-                txn_type="refund",
-                description=f"Refund for cancelled order {order.id}",
-            )
-        except ValueError:
-            pass
+        from api.v1.escrow_proxy import _cancel_escrow_internal
+        await _cancel_escrow_internal(order, session)
 
     return success_response(data=_order_to_dict(updated))

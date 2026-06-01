@@ -7,18 +7,12 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from core.db import get_db
 from core.security import hash_password
-from main import app
-from models.orders import Order, OrderStatus
-from models.services import Service
 from models.users import User
 from models.wallet import Wallet, Transaction as WalletTransaction
-from repositories.orders import OrderRepository
-from repositories.wallets import WalletRepository, ESCROW_USER_ID
+from repositories.wallets import WalletRepository
 
 
 @pytest_asyncio.fixture
