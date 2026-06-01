@@ -3,14 +3,19 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"github.com/marketplace/go-escrow/internal/clients"
 	"github.com/marketplace/go-escrow/internal/domain"
 	"github.com/marketplace/go-escrow/internal/repository"
 )
@@ -285,6 +290,181 @@ func TestEscrowService_Release(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "release transaction should exist")
+}
+
+func newTestServiceWithBlockchain(repo repository.EscrowRepository, bcCli *clients.BlockchainClient) *EscrowService {
+	logger, _ := zap.NewDevelopment()
+	svc := NewEscrowService(repo, nil, logger, bcCli)
+	svc.withTx = func(_ *sql.DB, _ *sql.TxOptions, fn func(tx *sql.Tx) error) error {
+		return fn(nil)
+	}
+	return svc
+}
+
+func newBlockchainTestServer(events chan<- string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var event clients.BlockchainEvent
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		select {
+		case events <- event.Action:
+		default:
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"block_index":1,"tx_hash":"test"}`))
+	}))
+}
+
+func waitForEvent(t *testing.T, events <-chan string, expected string) {
+	t.Helper()
+	select {
+	case action := <-events:
+		assert.Equal(t, expected, action)
+	case <-time.After(3 * time.Second):
+		t.Fatalf("timeout waiting for blockchain event %s", expected)
+	}
+}
+
+func TestEscrowService_Create_EmitsBlockchainEvent(t *testing.T) {
+	events := make(chan string, 1)
+	server := newBlockchainTestServer(events)
+	defer server.Close()
+
+	logger, _ := zap.NewDevelopment()
+	bcCli := clients.NewBlockchainClient(server.URL, logger)
+	repo := newMockRepo()
+	svc := newTestServiceWithBlockchain(repo, bcCli)
+
+	_, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	require.NoError(t, err)
+
+	waitForEvent(t, events, "CREATED")
+}
+
+func TestEscrowService_Fund_EmitsBlockchainEvent(t *testing.T) {
+	events := make(chan string, 1)
+	server := newBlockchainTestServer(events)
+	defer server.Close()
+
+	logger, _ := zap.NewDevelopment()
+	bcCli := clients.NewBlockchainClient(server.URL, logger)
+	repo := newMockRepo()
+	svc := newTestServiceWithBlockchain(repo, bcCli)
+
+	account, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	require.NoError(t, err)
+	<-events // consume CREATED event
+
+	_, err = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+	require.NoError(t, err)
+
+	waitForEvent(t, events, "FUNDED")
+}
+
+func TestEscrowService_Cancel_EmitsBlockchainEvent(t *testing.T) {
+	events := make(chan string, 2)
+	server := newBlockchainTestServer(events)
+	defer server.Close()
+
+	logger, _ := zap.NewDevelopment()
+	bcCli := clients.NewBlockchainClient(server.URL, logger)
+	repo := newMockRepo()
+	svc := newTestServiceWithBlockchain(repo, bcCli)
+
+	account, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	require.NoError(t, err)
+	<-events // consume CREATED
+
+	account, err = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+	require.NoError(t, err)
+	<-events // consume FUNDED
+
+	_, err = svc.Cancel(context.Background(), account.ID)
+	require.NoError(t, err)
+
+	waitForEvent(t, events, "CANCELLED")
+}
+
+func TestEscrowService_Release_EmitsBlockchainEvent(t *testing.T) {
+	events := make(chan string, 4)
+	server := newBlockchainTestServer(events)
+	defer server.Close()
+
+	logger, _ := zap.NewDevelopment()
+	bcCli := clients.NewBlockchainClient(server.URL, logger)
+	repo := newMockRepo()
+	svc := newTestServiceWithBlockchain(repo, bcCli)
+
+	account, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	require.NoError(t, err)
+	<-events // CREATED
+
+	account, err = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+	require.NoError(t, err)
+	<-events // FUNDED
+
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusInProgress)
+	require.NoError(t, err)
+	<-events // IN_PROGRESS
+
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusCompleted)
+	require.NoError(t, err)
+	<-events // COMPLETED
+
+	_, err = svc.Release(context.Background(), account.ID)
+	require.NoError(t, err)
+
+	waitForEvent(t, events, "RELEASED")
+}
+
+func TestEscrowService_Dispute_EmitsBlockchainEvent(t *testing.T) {
+	events := make(chan string, 4)
+	server := newBlockchainTestServer(events)
+	defer server.Close()
+
+	logger, _ := zap.NewDevelopment()
+	bcCli := clients.NewBlockchainClient(server.URL, logger)
+	repo := newMockRepo()
+	svc := newTestServiceWithBlockchain(repo, bcCli)
+
+	account, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	require.NoError(t, err)
+	<-events // CREATED
+
+	account, err = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+	require.NoError(t, err)
+	<-events // FUNDED
+
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusInProgress)
+	require.NoError(t, err)
+	<-events // IN_PROGRESS
+
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusCompleted)
+	require.NoError(t, err)
+	<-events // COMPLETED
+
+	_, err = svc.Dispute(context.Background(), account.ID, "defective product")
+	require.NoError(t, err)
+
+	waitForEvent(t, events, "DISPUTED")
 }
 
 func TestEscrowService_GetByID_NotFound(t *testing.T) {
