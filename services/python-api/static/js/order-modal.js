@@ -35,7 +35,7 @@ function updateOrderTotal() {
   if (!state) return;
   var qtyInput = document.getElementById('order-qty');
   var totalEl = document.getElementById('order-total-price');
-  var unitPrice = parseFloat(state.price) || 0;
+  var unitPrice = parseFloat(state.discountedPrice) || parseFloat(state.price) || 0;
   var qty = parseInt(qtyInput.value, 10) || 1;
   if (qty < 1) qty = 1;
   if (qty > 99) qty = 99;
@@ -65,25 +65,63 @@ function initQuantityControls() {
   qtyInput.addEventListener('input', updateOrderTotal);
 }
 
-function openOrderModal(serviceId, providerId, price, serviceTitle) {
+function openOrderModal(serviceId, providerId, price, serviceTitle, serviceDescription, originalPrice, discountedPrice, readOnly) {
   _orderModalTrigger = document.activeElement;
-  _orderModalState = { serviceId: serviceId, providerId: providerId, price: price };
+  _orderModalState = { serviceId: serviceId, providerId: providerId, price: price, discountedPrice: discountedPrice || price };
   var modal = document.getElementById('order-modal');
   var error = document.getElementById('order-modal-error');
   error.classList.add('hidden');
 
   document.getElementById('order-product-title').textContent = escapeHtml(serviceTitle || 'Product');
-  document.getElementById('order-unit-price').textContent = '$' + parseFloat(price).toFixed(2);
+
+  var unitPriceEl = document.getElementById('order-unit-price');
+  var discounted = parseFloat(discountedPrice) || parseFloat(price);
+  var original = parseFloat(originalPrice) || 0;
+  if (original > 0 && original > discounted) {
+    unitPriceEl.innerHTML = '<span style="text-decoration:line-through;color:var(--gray-400);margin-right:6px;">$' + original.toFixed(2) + '</span><span>$' + discounted.toFixed(2) + '</span>';
+  } else {
+    unitPriceEl.textContent = '$' + discounted.toFixed(2);
+  }
+
+  var descRow = document.getElementById('order-modal-description');
+  var descEl = document.getElementById('order-product-description');
+  if (serviceDescription) {
+    descEl.textContent = escapeHtml(serviceDescription);
+    descRow.style.display = '';
+  } else {
+    descRow.style.display = 'none';
+  }
 
   var qtyInput = document.getElementById('order-qty');
   qtyInput.value = 1;
   updateOrderTotal();
 
+  // Read-only mode for non-client roles
+  var qtyDecBtn = document.getElementById('order-qty-dec');
+  var qtyIncBtn = document.getElementById('order-qty-inc');
+  var submitBtn = document.getElementById('order-modal-submit');
+  var submitText = document.getElementById('order-modal-submit-text');
+  var confirmText = document.querySelector('.order-modal-confirm-text');
+  if (readOnly) {
+    qtyInput.disabled = true;
+    qtyDecBtn.disabled = true;
+    qtyIncBtn.disabled = true;
+    submitBtn.disabled = true;
+    submitText.textContent = 'Only clients can place orders';
+    if (confirmText) confirmText.textContent = 'Viewing mode — sign in as a client to place an order.';
+  } else {
+    qtyInput.disabled = false;
+    qtyDecBtn.disabled = false;
+    qtyIncBtn.disabled = false;
+    submitBtn.disabled = false;
+    submitText.textContent = 'Place Order';
+    if (confirmText) confirmText.textContent = 'Your order will be processed after payment confirmation.';
+  }
+
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
 
-  var submitBtn = document.getElementById('order-modal-submit');
-  if (submitBtn) submitBtn.focus();
+  if (submitBtn && !readOnly) submitBtn.focus();
 
   var keyHandler = function (e) {
     if (e.key === 'Escape') {

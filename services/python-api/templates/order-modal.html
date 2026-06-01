@@ -18,9 +18,9 @@
         <span class="order-product-label">Product</span>
         <span class="order-product-title" id="order-product-title"></span>
       </div>
-      <div class="order-product-detail">
-        <span class="order-product-label">Unit Price</span>
-        <span class="order-product-unit-price" id="order-unit-price"></span>
+      <div id="order-modal-description" class="order-product-detail" style="display:none;">
+        <span class="order-product-label">Description</span>
+        <span class="order-product-description" id="order-product-description"></span>
       </div>
     </div>
 
@@ -36,6 +36,11 @@
     <div class="order-total-row">
       <span class="order-total-label">Total</span>
       <span class="order-total-price" id="order-total-price">$0.00</span>
+    </div>
+
+    <div class="order-product-detail" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-200);">
+      <span class="order-product-label">Unit Price</span>
+      <span class="order-product-unit-price" id="order-unit-price"></span>
     </div>
 
     <p class="order-modal-confirm-text">Your order will be processed after payment confirmation.</p>
