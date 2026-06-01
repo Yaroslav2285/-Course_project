@@ -538,7 +538,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 
 ### Phase 8 — Admin dispute management panel
 
-**Проблема:** администратор не мог видеть и разрешать споры (disputed заказы). `admin@marketplace.local` не проходил Pydantic EmailStr валидацию (`.local` домен).
+**Проблема:** администратор не мог видеть и разрешать споры (disputed заказы). `admin@marketplace.local` не проходил Pydantic EmailStr валидацию (`.local` домен). Создан рабочий администратор `testadmin@gmail.com / admin123!`.
 
 **Решение:**
 1. **Admin email fix** — создан рабочий администратор `testadmin@gmail.com / admin123!` в БД напрямую.
@@ -690,7 +690,6 @@ get `/services/my` возвращал только 20 товаров (дефол
 
 **Известные проблемы (некритичные для курсовой):**
 - ❌ **No PostgreSQL in Go integration tests** — unit-тесты используют моки sqlmock/httptest. PostgreSQL тесты есть за `postgres_integration` build tag.
-- ❌ **Admin `.local` email** — `admin@marketplace.local` не проходит Pydantic EmailStr. Рабочий админ: `testadmin@gmail.com / admin123!`.
 
 **Тесты:**
 - Python: 81/81 passed (80% coverage on api/models/repositories/core; coverable target met ✅)
@@ -791,7 +790,7 @@ curl http://localhost:8000/api/static/js/api.js       # JS (200)
 curl http://localhost:8000/api/static/js/dashboard.js # Dashboard JS (200)
 curl http://localhost:8000/api/v1/services/           # API services (JSON)
 
-# Admin
+# Admin (testadmin@gmail.com — admin role)
 curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d '{"email":"testadmin@gmail.com","password":"admin123!"}'
 curl http://localhost:8000/admin/disputes -H "Authorization: Bearer <token>"
 curl -X POST http://localhost:8000/admin/disputes/{id}/release -H "Authorization: Bearer <token>"
