@@ -1,5 +1,7 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,7 @@ from repositories.wallets import WalletRepository, TransactionRepository, ESCROW
 from repositories.orders import OrderRepository
 from schemas.wallet import TopUpRequest, PayRequest, WalletRead, TransactionRead
 from schemas.users import UserRead
+from app.services.escrow_client import EscrowClient, EscrowClientError
 
 router = APIRouter()
 
@@ -56,6 +59,44 @@ async def pay_order(
         txn_type="escrow_fund",
         description=f"Payment for order {order.id}",
     )
+
+    idempotency_key = f"pay_{order.id}"
+    ec = EscrowClient()
+    go_ok = False
+    try:
+        from api.v1.escrow_proxy import _escrow_cache, _cache_set
+        escrow_id = _escrow_cache.get(str(order.id))
+        if not escrow_id:
+            result = await ec.create_escrow(
+                order_id=str(order.id),
+                amount=str(order.amount),
+                idempotency_key=idempotency_key,
+            )
+            escrow_id = result.get("id") or result.get("escrow_id") or str(uuid.uuid4())
+            _cache_set(str(order.id), escrow_id, result)
+        await ec.fund_escrow(
+            escrow_id=escrow_id,
+            amount=str(order.amount),
+            idempotency_key=idempotency_key,
+        )
+    except EscrowClientError as exc:
+        if exc.code == "SERVICE_UNAVAILABLE":
+            pass
+        else:
+            await wallet_repo.transfer(
+                from_user_id=ESCROW_USER_ID,
+                to_user_id=current_user.id,
+                amount=order.amount,
+                reference_id=order.id,
+                txn_type="escrow_fund_rollback",
+                description=f"Rollback payment for order {order.id}",
+            )
+            raise BadRequestException(
+                f"Escrow service error ({exc.code}), payment rolled back"
+            )
+    except ImportError:
+        pass
+
     order = await order_repo.update_status(order, OrderStatus.funded.value)
     wallet = await wallet_repo.get_by_user_id(current_user.id)
 

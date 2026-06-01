@@ -50,6 +50,7 @@ func TestIntegrationEscrowFullCycle(t *testing.T) {
 		v1.POST("/", handler.Create)
 		v1.POST("/:id/fund", handler.Fund)
 		v1.POST("/:id/release", handler.Release)
+		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
 		v1.GET("/:id", handler.GetByID)
 	}
@@ -123,6 +124,7 @@ func TestIntegrationEscrowDisputeCycle(t *testing.T) {
 		v1.POST("/", handler.Create)
 		v1.POST("/:id/fund", handler.Fund)
 		v1.POST("/:id/release", handler.Release)
+		v1.POST("/:id/cancel", handler.Cancel)
 		v1.POST("/:id/dispute", handler.Dispute)
 	}
 

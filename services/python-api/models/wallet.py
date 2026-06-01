@@ -13,6 +13,7 @@ from .base import Base
 class TransactionType(str, enum.Enum):
     topup = "topup"
     escrow_fund = "escrow_fund"
+    escrow_fund_rollback = "escrow_fund_rollback"
     transfer = "transfer"
     refund = "refund"
     withdrawal = "withdrawal"

@@ -15,6 +15,7 @@ from repositories.orders import OrderRepository
 from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.orders import OrderCreate, OrderRead, OrderStatusUpdate
 from schemas.users import UserRead
+from app.services.escrow_client import EscrowClient, EscrowClientError
 
 router = APIRouter()
 
@@ -155,6 +156,15 @@ async def update_order_status(
     if payload.status == OrderStatus.cancelled.value and prev_status in (
         OrderStatus.funded.value, OrderStatus.in_progress.value,
     ):
+        try:
+            from api.v1.escrow_proxy import _escrow_cache
+            escrow_id = _escrow_cache.get(str(order.id))
+            if escrow_id:
+                ec = EscrowClient()
+                await ec.cancel_escrow(escrow_id=escrow_id)
+        except (EscrowClientError, ImportError):
+            pass
+
         wallet_repo = WalletRepository(session)
         try:
             await wallet_repo.transfer(

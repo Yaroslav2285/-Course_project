@@ -144,10 +144,14 @@ cmd/healthcheck/main.go     # Go healthcheck бинарник для distroless 
 **State-machine (EscrowStatus):**
 ```
 CREATED → FUNDED → IN_PROGRESS → COMPLETED → RELEASED
-                        ↘              ↘
-                        DISPUTED      DISPUTED
+             ↓           ↓              ↘
+             ↓           ↓            DISPUTED
+             ↓           ↓                ↓
+             ↓        CANCELLED        RESOLVED
+             ↓
+          CANCELLED
 ```
-Валидные переходы: карта `ValidTransitions`, невалидный → 409 INVALID_TRANSITION
+Валидные переходы: карта `ValidTransitions`, невалидный → 409 INVALID_TRANSITION. CANCELLED — терминальный статус (выхода нет).
 
 **REST API (все под `/v1`):**
 | Метод | Путь | Описание |
@@ -156,11 +160,12 @@ CREATED → FUNDED → IN_PROGRESS → COMPLETED → RELEASED
 | GET | `/escrow/{id}` | Получить по ID |
 | POST | `/escrow/{id}/fund` | Пополнить (rate-limited) |
 | POST | `/escrow/{id}/release` | Высвободить |
+| POST | `/escrow/{id}/cancel` | Отменить (FUNDED/IN_PROGRESS → CANCELLED) |
 | POST | `/escrow/{id}/dispute` | Открыть спор (требует reason) |
 | POST | `/escrow/{id}/advance` | Продвинуть статус (FUNDED→IN_PROGRESS→COMPLETED) |
 | GET | `/health` | Healthcheck |
 
-**Тесты:** api (15), clients (5), domain (50+), integration (2), service (7) — все проходят
+**Тесты:** api (15), clients (5), domain (50+), integration (2), service (9) — все проходят
 
 ### Этап 5 — Blockchain Simulator
 
@@ -197,7 +202,7 @@ services/blockchain-sim/
 - X-Request-ID forwarding
 - X-Idempotency-Key поддержка
 - Таймаут: 5s
-- Методы: create_escrow, fund_escrow, release_escrow, dispute_escrow
+- Методы: create_escrow, fund_escrow, release_escrow, cancel_escrow, dispute_escrow, advance_escrow, complete_escrow
 - Error mapping: 404→NotFound, 409→Conflict, остальное→ServiceError
 
 **Go → Blockchain (blockchain_client.go):**
@@ -437,6 +442,36 @@ services/python-api/
 
 **Тесты:** без изменений (53/53, новых тестов не требуется — существующие проверяют OrderRead).
 
+### Phase 8 — Полный escrow-цикл через Go (real balances)
+
+**Проблема:** Go-escrow получал `amount="0"` при fund (только Python хранил реальные деньги).
+Go не мог корректно обработать cancel (не было CANCELLED статуса/хендлера).
+
+**Решение (Step 1 — Go):**
+1. **`StatusCancelled`** + `TxnCancel` в domain — FUNDED/IN_PROGRESS → CANCELLED (терминальный статус).
+2. **`Cancel()` в сервисе** — валидация перехода, обнуление balance, CANCEL транзакция, blockchain event.
+3. **`HandleCancel()` хендлер** — `POST /:id/cancel` с idempotency middleware.
+4. **Полный набор тестов**: domain (8), service (2), handler (3), integration (мок + route).
+
+**Решение (Step 2 — Python):**
+1. **`escrow_client.cancel_escrow()`** — новый метод клиента Python→Go.
+2. **`escrow_proxy.fund_escrow`** — исправлен `amount="0"` на `str(order.amount)`.
+3. **`escrow_proxy.cancel_proxy`** — новый эндпоинт `POST /{order_id}/cancel` (Go cancel → DB refund).
+4. **`orders.update_order_status`** — при cancelled вызывает Go `cancel_escrow` через кэш.
+5. **`wallet.pay_order`** — после DB transfer создаёт/fund-ит Go escrow с реальной суммой; graceful degradation при `SERVICE_UNAVAILABLE`; rollback DB при ошибке Go.
+
+**Файлы:**
+- `services/go-escrow/internal/domain/escrow.go` — CANCELLED, TxnCancel, validTransitions
+- `services/go-escrow/internal/service/escrow_service.go` — Cancel()
+- `services/go-escrow/internal/api/handler.go` — HandleCancel()
+- `services/go-escrow/internal/api/router.go` — POST /:id/cancel
+- `services/python-api/app/services/escrow_client.py` — cancel_escrow()
+- `services/python-api/api/v1/escrow_proxy.py` — fund fix, cancel_proxy
+- `services/python-api/api/v1/orders.py` — Go cancel on status→cancelled
+- `services/python-api/api/v1/wallet.py` — Go fund + rollback
+- `services/python-api/models/wallet.py` — escrow_fund_rollback txn_type
+- `services/go-escrow/integration_test.go` — cancel route
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -457,20 +492,23 @@ services/python-api/
 - ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация, автообновление после release/cancel
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
 - ✅ Escrow proxy — `/v1/escrow/:order_id/:action` с Go-first → fallback на PATCH
-- ✅ Wallet pay — `POST /v1/wallet/pay` переводит buyer → escrow holding
+- ✅ Wallet pay — `POST /v1/wallet/pay` переводит buyer → escrow holding **+ Go fund с реальной суммой**
+- ✅ **Go escrow получает реальные средства** — `amount="0"` исправлен на `str(order.amount)` во всех fund-вызовах
+- ✅ **Go Cancel handler** — `POST /v1/escrow/{id}/cancel` (FUNDED/IN_PROGRESS → CANCELLED, balance=0, blockchain event)
 - ✅ Release payout — escrow holding → seller (через proxy + fallback)
-- ✅ Cancel refund — escrow holding → buyer (если деньги были в эскроу)
+- ✅ Cancel refund — escrow → buyer + **Go cancel_escrow** (если escrow существует)
 - ✅ Blockchain audit trail — `/audit/{order_id}` с SHA-256 верификацией
 - ✅ Cache-busting — `?v=N` на всех CSS/JS
 - ✅ Navbar — статический HTML с JS-переключением между гостем и user
 - ✅ Footer — copyright на всех страницах, прижат к низу
 
 **Известные проблемы:**
-- ❌ **Go-escrow не держит реальные средства** — Python API передаёт `amount="0"` при fund, деньги только в Python БД. Для продакшена нужен escrow-счёт в Go.
+- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis.
+- ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД.
 
 **Тесты:**
 - Python: 53/53 passed
-- Go: все 6 пакетов OK
+- Go: все 6 пакетов OK (+ Cancel handler/service/domain/integration)
 - Blockchain: 26/26 passed (99% coverage)
 
 **SAST:**

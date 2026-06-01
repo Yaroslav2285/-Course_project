@@ -73,15 +73,16 @@ async def fund_escrow(
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+
     escrow_id = _escrow_cache.get(order_id)
     client = _get_escrow_client()
 
     try:
         if not escrow_id:
-            repo = OrderRepository(session)
-            order = await repo.get_by_id(uuid.UUID(order_id))
-            if not order:
-                raise NotFoundException("Order not found")
             result = await client.create_escrow(
                 order_id=order_id,
                 amount=str(order.amount),
@@ -92,12 +93,10 @@ async def fund_escrow(
 
         await client.fund_escrow(
             escrow_id=escrow_id,
-            amount="0",
+            amount=str(order.amount),
             idempotency_key=idempotency_key,
         )
 
-        repo = OrderRepository(session)
-        order = await repo.get_by_id(uuid.UUID(order_id))
         if order and order.status == "pending":
             await repo.update_status(order, status="funded")
 
@@ -109,10 +108,6 @@ async def fund_escrow(
             }
         )
     except EscrowClientError:
-        repo = OrderRepository(session)
-        order = await repo.get_by_id(uuid.UUID(order_id))
-        if not order:
-            raise NotFoundException("Order not found")
         if order.status != "pending":
             raise NotFoundException("Order is not in pending state")
         await repo.update_status(order, status="funded")
@@ -288,6 +283,53 @@ async def dispute_escrow(
             "escrow_id": escrow_id,
             "order_id": order_id,
             "status": "disputed",
+            "fallback": escrow_id is None,
+        }
+    )
+
+
+@router.post("/{order_id}/cancel")
+async def cancel_proxy(
+    order_id: str,
+    idempotency_key: str | None = Header(None),
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    client = _get_escrow_client()
+    escrow_id = _escrow_cache.get(order_id)
+
+    try:
+        if escrow_id:
+            await client.cancel_escrow(
+                escrow_id=escrow_id, idempotency_key=idempotency_key
+            )
+    except EscrowClientError:
+        pass
+
+    repo = OrderRepository(session)
+    order = await repo.get_by_id(uuid.UUID(order_id))
+    if not order:
+        raise NotFoundException("Order not found")
+    await repo.update_status(order, status="cancelled")
+
+    wallet_repo = WalletRepository(session)
+    try:
+        await wallet_repo.transfer(
+            from_user_id=ESCROW_USER_ID,
+            to_user_id=order.buyer_id,
+            amount=order.amount,
+            reference_id=order.id,
+            txn_type="refund",
+            description=f"Refund for cancelled order {order.id}",
+        )
+    except ValueError:
+        pass
+
+    return success_response(
+        data={
+            "escrow_id": escrow_id,
+            "order_id": order_id,
+            "status": "cancelled",
             "fallback": escrow_id is None,
         }
     )
