@@ -21,15 +21,20 @@ import (
 
 type mockEscrowSvc struct {
 	accounts map[uuid.UUID]*domain.EscrowAccount
+	errs     map[string]error
 }
 
 func newMockEscrowSvc() *mockEscrowSvc {
 	return &mockEscrowSvc{
 		accounts: make(map[uuid.UUID]*domain.EscrowAccount),
+		errs:     make(map[string]error),
 	}
 }
 
 func (m *mockEscrowSvc) Create(_ context.Context, req service.CreateEscrowRequest) (*domain.EscrowAccount, error) {
+	if err := m.errs["Create"]; err != nil {
+		return nil, err
+	}
 	account := &domain.EscrowAccount{
 		ID:        uuid.New(),
 		OrderID:   req.OrderID,
@@ -43,6 +48,9 @@ func (m *mockEscrowSvc) Create(_ context.Context, req service.CreateEscrowReques
 }
 
 func (m *mockEscrowSvc) AdvanceStatus(_ context.Context, id uuid.UUID, nextStatus domain.EscrowStatus) (*domain.EscrowAccount, error) {
+	if err := m.errs["AdvanceStatus"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
@@ -53,6 +61,9 @@ func (m *mockEscrowSvc) AdvanceStatus(_ context.Context, id uuid.UUID, nextStatu
 }
 
 func (m *mockEscrowSvc) Fund(_ context.Context, id uuid.UUID, amount decimal.Decimal) (*domain.EscrowAccount, error) {
+	if err := m.errs["Fund"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
@@ -64,6 +75,9 @@ func (m *mockEscrowSvc) Fund(_ context.Context, id uuid.UUID, amount decimal.Dec
 }
 
 func (m *mockEscrowSvc) Release(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	if err := m.errs["Release"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
@@ -74,6 +88,9 @@ func (m *mockEscrowSvc) Release(_ context.Context, id uuid.UUID) (*domain.Escrow
 }
 
 func (m *mockEscrowSvc) Cancel(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	if err := m.errs["Cancel"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
@@ -88,6 +105,9 @@ func (m *mockEscrowSvc) Cancel(_ context.Context, id uuid.UUID) (*domain.EscrowA
 }
 
 func (m *mockEscrowSvc) Dispute(_ context.Context, id uuid.UUID, reason string) (*domain.EscrowAccount, error) {
+	if err := m.errs["Dispute"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
@@ -98,6 +118,9 @@ func (m *mockEscrowSvc) Dispute(_ context.Context, id uuid.UUID, reason string) 
 }
 
 func (m *mockEscrowSvc) GetByID(_ context.Context, id uuid.UUID) (*domain.EscrowAccount, error) {
+	if err := m.errs["GetByID"]; err != nil {
+		return nil, err
+	}
 	account, ok := m.accounts[id]
 	if !ok {
 		return nil, nil
@@ -130,6 +153,32 @@ func setupTestRouter() (*gin.Engine, *mockEscrowSvc) {
 	}
 
 	return r, svc
+}
+
+func setupTestRouterWithMock(svc *mockEscrowSvc) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewEscrowHandler(svc)
+
+	r := gin.New()
+	r.Use(gin.Recovery())
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok", "service": "go-escrow"})
+	})
+
+	v1 := r.Group("/v1/escrow")
+	{
+		v1.POST("/", handler.Create)
+		v1.GET("/:id", handler.GetByID)
+		v1.POST("/:id/fund", handler.Fund)
+		v1.POST("/:id/advance", handler.Advance)
+		v1.POST("/:id/release", handler.Release)
+		v1.POST("/:id/cancel", handler.Cancel)
+		v1.POST("/:id/dispute", handler.Dispute)
+	}
+
+	return r
 }
 
 func TestHealthCheck(t *testing.T) {
@@ -466,6 +515,188 @@ func TestAdvanceEscrow_NotFound(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func newMockEscrowSvcWithError(method string, err error) *mockEscrowSvc {
+	m := newMockEscrowSvc()
+	m.errs[method] = err
+	return m
+}
+
+// --- Handler error path tests ---
+
+func TestCreateEscrow_ValidationError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Create", fmt.Errorf("validation: amount must be positive"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := fmt.Sprintf(`{"order_id":"%s","amount":"-50.00"}`, uuid.New().String())
+	req, _ := http.NewRequest("POST", "/v1/escrow/", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+func TestCreateEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Create", fmt.Errorf("database unavailable"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := fmt.Sprintf(`{"order_id":"%s","amount":"100.00"}`, uuid.New().String())
+	req, _ := http.NewRequest("POST", "/v1/escrow/", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestFundEscrow_InvalidTransition(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Fund", fmt.Errorf("invalid transition from RELEASED to FUNDED"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"amount":"100.00"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/fund", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestFundEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Fund", fmt.Errorf("internal error"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"amount":"100.00"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/fund", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestReleaseEscrow_NotFound(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Release", fmt.Errorf("escrow_account not found"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/release", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestReleaseEscrow_InvalidTransition(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Release", fmt.Errorf("invalid transition"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/release", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestReleaseEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Release", fmt.Errorf("internal error"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/release", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestCancelEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Cancel", fmt.Errorf("internal error"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/cancel", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDisputeEscrow_ReasonRequired(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Dispute", fmt.Errorf("reason is required"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"reason":""}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/dispute", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+func TestDisputeEscrow_NotFound(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Dispute", fmt.Errorf("escrow_account not found"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"reason":"defective"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/dispute", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestDisputeEscrow_InvalidTransition(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Dispute", fmt.Errorf("invalid transition"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"reason":"defective"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/dispute", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestDisputeEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("Dispute", fmt.Errorf("internal error"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"reason":"defective"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/dispute", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestAdvanceEscrow_InvalidTransition(t *testing.T) {
+	svc := newMockEscrowSvcWithError("AdvanceStatus", fmt.Errorf("invalid transition"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"status":"IN_PROGRESS"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/advance", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestAdvanceEscrow_InternalError(t *testing.T) {
+	svc := newMockEscrowSvcWithError("AdvanceStatus", fmt.Errorf("internal error"))
+	r := setupTestRouterWithMock(svc)
+
+	w := httptest.NewRecorder()
+	body := `{"status":"IN_PROGRESS"}`
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/advance", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
 func TestInvalidUUID(t *testing.T) {
