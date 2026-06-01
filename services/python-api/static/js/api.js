@@ -44,6 +44,8 @@ async function apiFetch(path, options = {}) {
   const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
     'X-Request-ID': crypto.randomUUID(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
@@ -51,7 +53,11 @@ async function apiFetch(path, options = {}) {
 
   let res;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+    options.signal = controller.signal;
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    clearTimeout(timeoutId);
   } catch (e) {
     const err = new Error('Network error — server unavailable');
     err.status = 0;
@@ -147,8 +153,11 @@ async function apiFetchServices(params = {}) {
   return apiFetch(`/services/${qs ? '?' + qs : ''}`);
 }
 
-async function apiFetchMyServices() {
-  return apiFetch('/services/my');
+async function apiFetchMyServices(limit, offset) {
+  limit = limit || 100;
+  offset = offset || 0;
+  var t = Date.now();
+  return apiFetch('/services/my?limit=' + limit + '&offset=' + offset + '&_t=' + t);
 }
 
 async function apiFetchService(id) {

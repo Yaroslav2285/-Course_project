@@ -186,40 +186,48 @@ function switchTab(tab) {
 }
 
 // -- My Services --
-function initMyServices() {
+async function initMyServices() {
   var container = document.getElementById('services-content');
   if (!container) return;
+  console.log('[initMyServices] starting with container:', container);
   container.innerHTML = '<div class="flex-center" style="padding:40px;"><div class="spinner"></div></div>';
 
-  apiFetchMyServices()
-    .then(function (res) {
-      var services = res.data || [];
-      var total = res.meta ? res.meta.total : services.length;
-      var countEl = document.getElementById('services-count');
-      if (countEl) countEl.textContent = '(' + total + ')';
-      if (!services.length) {
-        container.innerHTML = '<div class="dashboard-empty"><p>No products yet. Create your first product!</p></div>';
-        return;
-      }
-      serviceData = [];
-      var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-      services.forEach(function (s) {
-        serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
-        var idx = serviceData.length - 1;
-        html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
-          + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
-          + '<td data-label="Status">' + statusBadge(s.status) + '</td>'
-          + '<td class="order-actions" data-label="Actions">'
-          + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
-          + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
-          + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-      container.innerHTML = html;
-    })
-    .catch(function (err) {
-      container.innerHTML = '<div class="alert alert-error">Failed to load products: ' + escapeHtml(err.message) + '</div>';
+  try {
+    var res = await apiFetchMyServices();
+    var services = res.data || [];
+    console.log('[initMyServices] got services count:', services.length, 'ids:', services.map(function(s){return s.id;}).join(','));
+    var total = res.meta ? res.meta.total : services.length;
+    var countEl = document.getElementById('services-count');
+    if (countEl) countEl.textContent = '(' + total + ')';
+    if (!services.length) {
+      container.innerHTML = '<div class="dashboard-empty"><p>No products yet. Create your first product!</p></div>';
+      return;
+    }
+    serviceData = [];
+    var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    services.forEach(function (s) {
+      serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
+      var idx = serviceData.length - 1;
+      html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
+        + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
+        + '<td data-label="Status">' + statusBadge(s.status) + '</td>'
+        + '<td class="order-actions" data-label="Actions">'
+        + '<button class="btn-action btn-action-accept" onclick="editServiceByIndex(' + idx + ')">Edit</button> '
+        + '<button class="btn-action btn-action-cancel" onclick="deleteService(\'' + s.id + '\')">Delete</button>'
+        + '</td></tr>';
     });
+    html += '</tbody></table></div>';
+    // Force DOM replacement — create a brand-new container
+    var newContainer = document.createElement('div');
+    newContainer.id = 'services-content';
+    newContainer.innerHTML = html;
+    container.parentNode.replaceChild(newContainer, container);
+    console.log('[initMyServices] DOM replaced successfully');
+  } catch (err) {
+    console.error('[initMyServices] error:', err);
+    container = document.getElementById('services-content') || container;
+    container.innerHTML = '<div class="alert alert-error">Failed to load products: ' + escapeHtml(err.message) + '</div>';
+  }
 }
 
 // -- Incoming Orders --
@@ -420,7 +428,13 @@ function updateOrderStatusUI(orderId, newStatus) {
 }
 
 // ===== Service CRUD (Executor) =====
+function _resetSaveBtn() {
+  var btn = document.querySelector('#service-modal .btn-primary');
+  if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+}
+
 function openCreateServiceModal() {
+  _resetSaveBtn();
   _svcModalTrigger = document.activeElement;
   document.getElementById('modal-title').textContent = 'Create Product';
   document.getElementById('svc-id').value = '';
@@ -461,6 +475,7 @@ function closeServiceModal() {
 function editServiceByIndex(idx) {
   var d = serviceData[idx];
   if (!d) return;
+  _resetSaveBtn();
   _svcModalTrigger = document.activeElement;
   document.getElementById('modal-title').textContent = 'Edit Product';
   document.getElementById('svc-id').value = d.id;
@@ -507,11 +522,14 @@ async function saveService() {
       }
       showToast('Product created!', 'success');
     }
+    _resetSaveBtn();
     closeServiceModal();
-    initMyServices();
+    await initMyServices();
   } catch (err) {
     showAlert(err.message, 'error');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    closeServiceModal();
+    await initMyServices();
   }
 }
 
@@ -521,7 +539,7 @@ async function deleteService(id) {
   try {
     await apiDeleteService(id);
     showToast('Product deleted', 'info');
-    initMyServices();
+    await initMyServices();
   } catch (err) {
     showAlert(err.message, 'error');
   }

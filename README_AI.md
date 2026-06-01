@@ -478,6 +478,55 @@ Go не мог корректно обработать cancel (не было CAN
 - `services/python-api/models/wallet.py` — escrow_fund_rollback txn_type
 - `services/go-escrow/integration_test.go` — cancel route
 
+### Phase 8 — Backend bugfixes: WAL mode, idempotency, escrow safety
+
+**Проблемы:** SQLite table lock contention при последовательных POST→PUT/PUT→GET;
+pay_order не-idempotent (повторный вызов падал с 400); complete_escrow вызывал несуществующий Go route.
+
+**Решение:**
+1. **WAL mode (`core/db.py`)** — `PRAGMA journal_mode=WAL` + `PRAGMA busy_timeout=5000` на всех SQLite соединениях.
+2. **pay_order idempotent (`api/v1/wallet.py`)** — если order уже `funded` и есть успешная `escrow_fund` транзакция, возвращает success вместо ошибки.
+3. **`TransactionRepository.get_by_reference()`** — новый метод поиска транзакции по `reference_id` + `type` + опциональный `status`.
+4. **complete_escrow → advance_escrow (`api/v1/escrow_proxy.py`)** — заменён вызов `client.complete_escrow()` (нет такого Go route) на `client.advance_escrow(escrow_id, status="COMPLETED")`.
+5. **_process_response non-JSON safety (`escrow_client.py`)** — `response.json()` wrapped в try/except ValueError с fallback `{}`.
+6. **Fetch timeout (`static/js/api.js`)** — `AbortController` с 15s timeout на всех `apiFetch` вызовах.
+
+**Файлы:**
+- `services/python-api/core/db.py` — WAL + busy_timeout
+- `services/python-api/api/v1/wallet.py` — idempotent pay_order
+- `services/python-api/repositories/wallets.py` — get_by_reference()
+- `services/python-api/api/v1/escrow_proxy.py` — complete → advance
+- `services/python-api/app/services/escrow_client.py` — non-JSON safety
+
+### Phase 8 — Frontend bugfixes: My Services refresh, pagination, save button
+
+**Проблемы:** После create/delete товара список не обновлялся (только хард-рефреш).
+get `/services/my` возвращал только 20 товаров (дефолт лимит). Кнопка Save оставалась disabled после ошибки.
+
+**Решение (Round 1 — pagination + await):**
+1. **`apiFetchMyServices(limit, offset)`** — передаёт `?limit=100&offset=0` (все товары, не 20).
+2. **`_resetSaveBtn()` helper** — сбрасывает disabled + textContent на Save.
+3. **`initMyServices()` возвращает promise** — `return apiFetchMyServices().then(...)`, callers могут `await`.
+4. **saveService/deleteService await initMyServices()** — список обновляется до возврата из функции.
+5. **saveService catch handler** — закрывает модалку и вызывает `initMyServices()` даже при ошибке.
+6. **Cache-buster:** dashboard.js v=12, wallet.js v=5.
+
+**Решение (Round 2 — Cache-Control + async/await + replaceChild):** (не помогло)
+1. **Cache-Control: no-cache** во всех fetch запросах (api.js).
+2. **_t=timestamp** cache-busting query-param в apiFetchMyServices.
+3. **initMyServices переписан** с `.then/.catch` на `async/await` + `try/catch`.
+4. **DOM update через replaceChild** — новый `<div id="services-content">` заменяет старый (вместо container.innerHTML).
+5. **console.log** — логирование count + IDs из API ответа.
+6. **api.js v=8** в base.html; dashboard.js v=14.
+
+**Файлы:**
+- `services/python-api/static/js/api.js` — limit/offset, Cache-Control, _t
+- `services/python-api/static/js/dashboard.js` — initMyServices async, _resetSaveBtn, await, replaceChild, console.log
+- `services/python-api/templates/dashboard_executor.html` — js v=14
+- `services/python-api/templates/base.html` — api.js v=8
+
+**Не решено:** create/delete всё ещё не обновляет список — требуется дальнейшая диагностика.
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -512,6 +561,7 @@ Go не мог корректно обработать cancel (не было CAN
 - ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
 - ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
 - ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_8`
+- ❌ **Create/delete не обновляет список My Products** — После создания или удаления товара `initMyServices()` вызывается, но список не обновляется до хард-рефреша (Ctrl+Shift+R). Предположительная причина: race condition в DOM-обновлении после закрытия модалки или скрытый кеш браузера. Добавлены Cache-Control, async/await, replaceChild — требуется тест.
 
 **Тесты:**
 - Python: 54/54 passed

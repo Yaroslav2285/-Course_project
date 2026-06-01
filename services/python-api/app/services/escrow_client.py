@@ -157,7 +157,10 @@ class EscrowClient:
         return self._process_response(response)
 
     def _process_response(self, response: httpx.Response) -> dict[str, Any]:
-        body = response.json()
+        try:
+            body = response.json()
+        except ValueError:
+            body = {}
 
         if response.is_success:
             return body.get("data") or body

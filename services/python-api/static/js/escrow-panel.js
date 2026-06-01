@@ -111,9 +111,13 @@ async function loadEscrowPanel(orderId) {
       // escrow unavailable — continue with order data
     }
 
-    var rawStatus = escrow && escrow.status ? escrow.status : (orderData.status || 'pending');
     var goToOrder = { created: 'pending', funded: 'funded', in_progress: 'in_progress', completed: 'completed', released: 'released', cancelled: 'cancelled', disputed: 'disputed' };
-    var status = goToOrder[rawStatus.toLowerCase()] || (orderData.status || 'pending');
+    var rawStatus = escrow && escrow.status ? escrow.status : null;
+    var goStatus = rawStatus ? (goToOrder[rawStatus.toLowerCase()] || null) : null;
+    var status = orderData.status || 'pending';
+    if (goStatus && status === 'pending') {
+        status = goStatus;
+    }
     var disputed = status === 'disputed';
     var role = checkAuth().role || 'client';
 

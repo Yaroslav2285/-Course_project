@@ -149,3 +149,18 @@ class TransactionRepository(RepositoryBase[Transaction]):
         result = await self.session.execute(stmt)
         items = list(result.scalars().all())
         return items, total
+
+    async def get_by_reference(
+        self,
+        reference_id: UUID,
+        txn_type: str,
+        status: str | None = None,
+    ) -> Transaction | None:
+        stmt = select(Transaction).where(
+            Transaction.reference_id == reference_id,
+            Transaction.type == txn_type,
+        )
+        if status:
+            stmt = stmt.where(Transaction.status == status)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

@@ -160,8 +160,10 @@ async def complete_escrow(
 
     try:
         if escrow_id:
-            await client.complete_escrow(
-                escrow_id=escrow_id, idempotency_key=idempotency_key
+            await client.advance_escrow(
+                escrow_id=escrow_id,
+                status="COMPLETED",
+                idempotency_key=idempotency_key,
             )
     except EscrowClientError:
         logger = structlog.get_logger()

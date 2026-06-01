@@ -45,6 +45,25 @@ async def pay_order(
         raise NotFoundException("Order not found")
     if str(order.buyer_id) != str(current_user.id):
         raise NotFoundException("Order not found")
+
+    # Idempotent: if already funded, check for existing payment and return success
+    if order.status == OrderStatus.funded.value:
+        txn_repo = TransactionRepository(session)
+        existing = await txn_repo.get_by_reference(
+            reference_id=order.id,
+            txn_type="escrow_fund",
+            status=TransactionStatus.success.value,
+        )
+        if existing:
+            wallet = await wallet_repo.get_by_user_id(current_user.id)
+            return success_response(
+                data={
+                    "balance": str(wallet.balance) if wallet else "0",
+                    "message": "Already funded",
+                }
+            )
+        raise BadRequestException("Order is not in pending status")
+
     if order.status != OrderStatus.pending.value:
         raise BadRequestException("Order is not in pending status")
 
