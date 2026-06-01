@@ -53,6 +53,7 @@ func TestNewRouter_RouteRegistration(t *testing.T) {
 
 	expectedRoutes := []expectedRoute{
 		{"GET", "/health"},
+		{"GET", "/swagger/*any"},
 		{"POST", "/v1/escrow"},
 		{"GET", "/v1/escrow/:id"},
 		{"POST", "/v1/escrow/:id/fund"},

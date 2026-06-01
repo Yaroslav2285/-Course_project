@@ -4,6 +4,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 
 	"github.com/marketplace/go-escrow/internal/service"
@@ -22,6 +24,9 @@ func NewRouter(svc *service.EscrowService, log *zap.Logger, rateLimiter *RateLim
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "go-escrow"})
 	})
+
+	// Swagger UI
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	handler := NewEscrowHandler(svc)
 

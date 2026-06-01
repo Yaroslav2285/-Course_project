@@ -43,13 +43,14 @@ func IsValidTransition(from, to EscrowStatus) bool {
 	return false
 }
 
+// EscrowAccount represents an escrow account with state-machine status.
 type EscrowAccount struct {
-	ID        uuid.UUID       `json:"id"`
-	OrderID   uuid.UUID       `json:"order_id"`
-	Balance   decimal.Decimal `json:"balance"`
-	Status    EscrowStatus    `json:"status"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+	ID        uuid.UUID       `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	OrderID   uuid.UUID       `json:"order_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Balance   decimal.Decimal `json:"balance" example:"100.0000"`
+	Status    EscrowStatus    `json:"status" example:"CREATED"`
+	CreatedAt time.Time       `json:"created_at" example:"2026-06-01T12:00:00Z"`
+	UpdatedAt time.Time       `json:"updated_at" example:"2026-06-01T12:00:00Z"`
 }
 
 type TransactionType string

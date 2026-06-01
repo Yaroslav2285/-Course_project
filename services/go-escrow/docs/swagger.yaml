@@ -1,0 +1,379 @@
+basePath: /v1/escrow
+definitions:
+  api.ErrorItem:
+    properties:
+      code:
+        example: INVALID_UUID
+        type: string
+      detail:
+        example: id must be a valid UUID
+        type: string
+    type: object
+  api.ErrorResponse:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/api.ErrorItem'
+        type: array
+    type: object
+  api.SuccessResponse:
+    properties:
+      data: {}
+    type: object
+  api.advanceRequest:
+    properties:
+      status:
+        enum:
+        - IN_PROGRESS
+        - COMPLETED
+        example: IN_PROGRESS
+        type: string
+    required:
+    - status
+    type: object
+  api.createEscrowRequest:
+    properties:
+      amount:
+        example: "100.0000"
+        type: string
+      order_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - amount
+    - order_id
+    type: object
+  api.disputeRequest:
+    properties:
+      reason:
+        example: Service not delivered as described
+        type: string
+    type: object
+  api.fundEscrowRequest:
+    properties:
+      amount:
+        example: "100.0000"
+        type: string
+    required:
+    - amount
+    type: object
+host: localhost:8081
+info:
+  contact:
+    email: marketplace@marketplace.local
+    name: Marketplace Support
+  description: State-machine escrow microservice with idempotency, rate limiting,
+    and blockchain event auditting.
+  termsOfService: http://swagger.io/terms/
+  title: Go Escrow API
+  version: 1.0.0
+paths:
+  /v1/escrow:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new escrow account linked to an order with the specified
+        amount.
+      parameters:
+      - description: Idempotency key (UUID)
+        in: header
+        name: X-Idempotency-Key
+        type: string
+      - description: Create escrow request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.createEscrowRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Escrow account created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID or VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new escrow account
+      tags:
+      - escrow
+  /v1/escrow/{id}:
+    get:
+      description: Retrieves an escrow account by its UUID.
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Escrow account details
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get escrow account by ID
+      tags:
+      - escrow
+  /v1/escrow/{id}/advance:
+    post:
+      consumes:
+      - application/json
+      description: Advances the escrow account to the next status (FUNDED → IN_PROGRESS
+        → COMPLETED).
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Advance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.advanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Escrow status advanced
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID or VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: INVALID_TRANSITION
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Advance escrow status
+      tags:
+      - escrow
+  /v1/escrow/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancels a funded or in-progress escrow account. Balance is zeroed
+        and a cancel event is emitted.
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Idempotency key (UUID)
+        in: header
+        name: X-Idempotency-Key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Escrow account cancelled
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: INVALID_TRANSITION
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Cancel an escrow account
+      tags:
+      - escrow
+  /v1/escrow/{id}/dispute:
+    post:
+      consumes:
+      - application/json
+      description: Opens a dispute for a completed escrow account. Reason is required.
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Idempotency key (UUID)
+        in: header
+        name: X-Idempotency-Key
+        type: string
+      - description: Dispute request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.disputeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dispute opened
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID or VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: INVALID_TRANSITION
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "422":
+          description: VALIDATION_ERROR (reason required)
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Dispute an escrow account
+      tags:
+      - escrow
+  /v1/escrow/{id}/fund:
+    post:
+      consumes:
+      - application/json
+      description: Adds funds to an existing escrow account. Rate-limited per IP.
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Idempotency key (UUID)
+        in: header
+        name: X-Idempotency-Key
+        type: string
+      - description: Fund request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.fundEscrowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Escrow account funded
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID or VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: INVALID_TRANSITION
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "429":
+          description: RATE_LIMITED
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Fund an escrow account
+      tags:
+      - escrow
+  /v1/escrow/{id}/release:
+    post:
+      consumes:
+      - application/json
+      description: Releases funds from the escrow account to the seller.
+      parameters:
+      - description: Escrow account ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Idempotency key (UUID)
+        in: header
+        name: X-Idempotency-Key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Escrow account released
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: INVALID_UUID
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: INVALID_TRANSITION
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: INTERNAL
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Release an escrow account
+      tags:
+      - escrow
+securityDefinitions:
+  X-Idempotency-Key:
+    in: header
+    name: X-Idempotency-Key
+    type: apiKey
+  X-Request-ID:
+    in: header
+    name: X-Request-ID
+    type: apiKey
+swagger: "2.0"
