@@ -831,6 +831,14 @@ tr:hover td {
   max-width: 240px;
 }
 
+.order-product-description {
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  text-align: right;
+  max-width: 240px;
+  line-height: 1.4;
+}
+
 .order-product-unit-price {
   font-size: 0.9375rem;
   color: var(--gray-800);

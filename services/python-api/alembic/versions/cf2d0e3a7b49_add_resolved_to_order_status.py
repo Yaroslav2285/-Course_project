@@ -17,12 +17,12 @@ depends_on = None
 def upgrade() -> None:
     op.alter_column('orders', 'status',
                existing_type=sa.VARCHAR(length=11),
-               type_=sa.VARCHAR(length=12),
+               type_=sa.VARCHAR(length=32),
                existing_nullable=False)
 
 
 def downgrade() -> None:
     op.alter_column('orders', 'status',
-               existing_type=sa.VARCHAR(length=12),
+               existing_type=sa.VARCHAR(length=32),
                type_=sa.VARCHAR(length=11),
                existing_nullable=False)
