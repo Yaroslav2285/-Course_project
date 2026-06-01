@@ -689,7 +689,6 @@ get `/services/my` возвращал только 20 товаров (дефол
 - ✅ **Admin dispute panel** — `/admin/disputes`: таблица споров, Details модалка, Release/Refund кнопки, buyer/seller email, dispute reason
 
 **Известные проблемы (некритичные для курсовой):**
-- ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Fallback на PATCH отрабатывает корректно. Для production нужен Redis.
 - ❌ **No PostgreSQL in Go integration tests** — unit-тесты используют моки sqlmock/httptest. PostgreSQL тесты есть за `postgres_integration` build tag.
 - ❌ **Admin `.local` email** — `admin@marketplace.local` не проходит Pydantic EmailStr. Рабочий админ: `testadmin@gmail.com / admin123!`.
 
