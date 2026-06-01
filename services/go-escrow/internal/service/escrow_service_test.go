@@ -669,6 +669,101 @@ func TestEscrowService_Dispute_DBError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// --- Resolve tests ---
+
+func TestEscrowService_Resolve(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	account, err := setupDisputedAccount(svc, repo)
+	require.NoError(t, err)
+
+	account, err = svc.Resolve(context.Background(), account.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, domain.StatusResolved, account.Status)
+
+	found := false
+	for _, txn := range repo.transactions {
+		if txn.TransactionType == domain.TxnResolve {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "resolve transaction should exist")
+}
+
+func TestEscrowService_Resolve_NotFound(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	_, err := svc.Resolve(context.Background(), uuid.New())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestEscrowService_Resolve_InvalidTransition(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	account, _ := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+
+	_, err := svc.Resolve(context.Background(), account.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid transition")
+}
+
+func TestEscrowService_Resolve_DBError(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestServiceWithDBError(repo)
+
+	_, err := svc.Resolve(context.Background(), uuid.New())
+	assert.Error(t, err)
+}
+
+func TestEscrowService_Fund_InvalidAmount(t *testing.T) {
+	repo := newMockRepo()
+	svc := newTestService(repo)
+
+	account, _ := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+
+	_, err := svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(-50.00))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "validation")
+}
+
+func setupDisputedAccount(svc *EscrowService, repo *mockRepo) (*domain.EscrowAccount, error) {
+	account, err := svc.Create(context.Background(), CreateEscrowRequest{
+		OrderID: uuid.New(),
+		Amount:  decimal.NewFromFloat(100.00),
+	})
+	if err != nil {
+		return nil, err
+	}
+	account, err = svc.Fund(context.Background(), account.ID, decimal.NewFromFloat(100.00))
+	if err != nil {
+		return nil, err
+	}
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusInProgress)
+	if err != nil {
+		return nil, err
+	}
+	account, err = svc.AdvanceStatus(context.Background(), account.ID, domain.StatusCompleted)
+	if err != nil {
+		return nil, err
+	}
+	account, err = svc.Dispute(context.Background(), account.ID, "defective product")
+	if err != nil {
+		return nil, err
+	}
+	return account, nil
+}
+
 func TestEscrowService_GetByID_NotFound(t *testing.T) {
 	repo := newMockRepo()
 	svc := newTestService(repo)

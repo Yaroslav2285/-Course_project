@@ -26,6 +26,17 @@ func Connect(dsn string) (*Database, error) {
 		return nil, fmt.Errorf("sql.Open: %w", err)
 	}
 
+	db, err = initDB(db)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Database{DB: db}, nil
+}
+
+// initDB configures pool settings, pings, and runs migrations.
+// Extracted for testability — use Connect() in production.
+func initDB(db *sql.DB) (*sql.DB, error) {
 	// LR #5: Connection pool tuning for highload
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
@@ -43,7 +54,7 @@ func Connect(dsn string) (*Database, error) {
 		return nil, fmt.Errorf("migrations: %w", err)
 	}
 
-	return &Database{DB: db}, nil
+	return db, nil
 }
 
 func runMigrations(db *sql.DB) error {

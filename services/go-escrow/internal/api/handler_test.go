@@ -125,6 +125,9 @@ func (m *mockEscrowSvc) Resolve(_ context.Context, id uuid.UUID) (*domain.Escrow
 	if !ok {
 		return nil, fmt.Errorf("escrow_account not found")
 	}
+	if !domain.IsValidTransition(account.Status, domain.StatusResolved) {
+		return nil, fmt.Errorf("invalid transition from %s to RESOLVED", account.Status)
+	}
 	account.Status = domain.StatusResolved
 	account.UpdatedAt = time.Now().UTC()
 	return account, nil
@@ -708,6 +711,73 @@ func TestAdvanceEscrow_InternalError(t *testing.T) {
 	body := `{"status":"IN_PROGRESS"}`
 	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/advance", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestResolveEscrow_Success(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	account := &domain.EscrowAccount{
+		ID:        uuid.New(),
+		OrderID:   uuid.New(),
+		Balance:   decimal.NewFromFloat(100.00),
+		Status:    domain.StatusDisputed,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	svc.accounts[account.ID] = account
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+account.ID.String()+"/resolve", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, "RESOLVED", data["status"])
+}
+
+func TestResolveEscrow_InvalidTransition(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	account := &domain.EscrowAccount{
+		ID:        uuid.New(),
+		OrderID:   uuid.New(),
+		Balance:   decimal.Zero,
+		Status:    domain.StatusCreated,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	svc.accounts[account.ID] = account
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+account.ID.String()+"/resolve", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestResolveEscrow_NotFound(t *testing.T) {
+	r, _ := setupTestRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/resolve", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestResolveEscrow_InternalError(t *testing.T) {
+	r, svc := setupTestRouter()
+
+	svc.errs["Resolve"] = fmt.Errorf("db connection failed")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/escrow/"+uuid.New().String()+"/resolve", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
