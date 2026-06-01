@@ -459,6 +459,27 @@
   }
 }
 
+/* ===== Blockchain column in orders table ===== */
+.bc-cell {
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.bc-verified {
+  cursor: help;
+}
+
+.bc-unverified {
+  cursor: help;
+}
+
+.bc-unknown {
+  color: var(--gray-400);
+  cursor: help;
+}
+
 /* ===== Blockchain indicator ===== */
 .blockchain-indicator {
   display: flex;

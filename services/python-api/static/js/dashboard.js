@@ -31,6 +31,7 @@ function showSkeleton(parent, rows) {
       + '<td class="skeleton-cell"><div class="skeleton-bar long"></div></td>'
       + '<td class="skeleton-cell"><div class="skeleton-bar short"></div></td>'
       + '<td class="skeleton-cell"><span class="skeleton-badge"></span></td>'
+      + '<td class="skeleton-cell skeleton-bc"><span class="skeleton-badge"></span></td>'
       + '<td class="skeleton-cell"><div class="skeleton-bar medium"></div></td>'
       + '<td class="skeleton-cell"><div class="skeleton-bar short"></div></td>'
       + '</tr>';
@@ -141,6 +142,14 @@ function initClientDashboard() {
   }
 }
 
+function blockchainBadge(verified, status) {
+  if (status === 'pending' || status === 'cancelled' || status === 'created') {
+    return '<span class="bc-unknown" title="No blockchain records yet">&#9899;</span>';
+  }
+  if (verified) return '<span class="bc-verified" title="Blockchain verified">&#9989;</span>';
+  return '<span class="bc-unverified" title="Not on blockchain">&#10060;</span>';
+}
+
 async function renderClientOrders(tbody, orders) {
   var titles = {};
   await Promise.all(orders.map(function (o) {
@@ -153,6 +162,7 @@ async function renderClientOrders(tbody, orders) {
       + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
       + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
       + '<td data-label="Status"><span id="badge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td data-label="Blockchain" class="bc-cell">' + blockchainBadge(o.blockchain_verified, o.status) + '</td>'
       + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
       + '<td class="order-actions" id="actions-' + o.id + '" data-label="Actions">' + actions + '</td>'
       + '</tr>';
@@ -326,6 +336,7 @@ function refreshIncomingOrders() {
             + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
             + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
             + '<td data-label="Status"><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+            + '<td data-label="Blockchain" class="bc-cell">' + blockchainBadge(o.blockchain_verified, o.status) + '</td>'
             + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
             + '<td class="order-actions" id="eactions-' + o.id + '" data-label="Actions">' + actions + '</td>'
             + '</tr>';
@@ -350,6 +361,7 @@ async function renderIncomingOrders(tbody, orders) {
       + '<td class="order-service" data-label="Product">' + escapeHtml(titles[o.service_id] || '...') + '</td>'
       + '<td class="order-amount" data-label="Amount">' + formatPrice(o.amount) + '</td>'
       + '<td data-label="Status"><span id="ebadge-' + o.id + '">' + statusBadge(o.status) + '</span></td>'
+      + '<td data-label="Blockchain" class="bc-cell">' + blockchainBadge(o.blockchain_verified, o.status) + '</td>'
       + '<td class="order-date" data-label="Date">' + formatDate(o.created_at) + '</td>'
       + '<td class="order-actions" id="eactions-' + o.id + '" data-label="Actions">' + actions + '</td>'
       + '</tr>';

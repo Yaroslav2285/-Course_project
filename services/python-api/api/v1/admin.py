@@ -14,8 +14,9 @@ from schemas.users import UserRead
 router = APIRouter()
 
 
-def _order_to_dict(order: Order) -> dict:
-    return {
+async def _order_to_dict(order: Order) -> dict:
+    from api.v1.orders import _check_blockchain_audit
+    result = {
         "id": str(order.id),
         "service_id": str(order.service_id),
         "buyer_id": str(order.buyer_id),
@@ -25,9 +26,11 @@ def _order_to_dict(order: Order) -> dict:
         "amount": str(order.amount),
         "status": order.status,
         "notes": order.notes,
+        "blockchain_verified": await _check_blockchain_audit(str(order.id)),
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "updated_at": order.updated_at.isoformat() if order.updated_at else None,
     }
+    return result
 
 
 @router.get("/disputes", response_model=dict)
@@ -43,5 +46,6 @@ async def list_disputes(
     repo = OrderRepository(session)
     items, total = await repo.list_disputes(limit=limit, offset=offset)
 
-    order_list = [_order_to_dict(o) for o in items]
+    import asyncio
+    order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)

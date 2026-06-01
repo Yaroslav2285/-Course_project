@@ -1,7 +1,10 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+import asyncio
+import os
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +20,35 @@ from schemas.users import UserRead
 
 router = APIRouter()
 
+_blockchain_cache: dict[str, bool] = {}
 
-def _order_to_dict(order: Order) -> dict:
+async def _check_blockchain_audit(order_id: str) -> bool:
+    if os.environ.get("TESTING"):
+        return False
+    str_id = str(order_id)
+    if str_id in _blockchain_cache:
+        return _blockchain_cache[str_id]
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(2.0, connect=1.0)) as client:
+            resp = await client.get(f"http://blockchain-sim:8082/v1/chain/audit/{str_id}")
+            if resp.status_code == 200:
+                data = resp.json()
+                blocks = data.get("blocks", [])
+                result = len(blocks) > 0
+                _blockchain_cache[str_id] = result
+                return result
+    except Exception:
+        pass
+    _blockchain_cache[str_id] = False
+    return False
+
+
+async def _order_to_dict(order: Order) -> dict:
     d = OrderRead.model_validate(order).model_dump()
     d["seller_email"] = order.seller.email if order.seller else None
     d["buyer_email"] = order.buyer.email if order.buyer else None
+    if order.status not in ("pending", "cancelled", "created"):
+        d["blockchain_verified"] = await _check_blockchain_audit(str(order.id))
     return d
 
 
@@ -77,7 +104,7 @@ async def list_orders(
         filtered = [o for o in items if o.status == status]
         total = len(filtered)
         items = filtered[offset : offset + limit]
-    order_list = [_order_to_dict(o) for o in items]
+    order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
@@ -102,7 +129,7 @@ async def list_sold_orders(
         filtered = [o for o in items if o.status == status]
         total = len(filtered)
         items = filtered[offset : offset + limit]
-    order_list = [_order_to_dict(o) for o in items]
+    order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
@@ -116,7 +143,7 @@ async def get_order(
     order = await repo.get_by_id(order_id)
     if not order:
         raise NotFoundException("Order not found")
-    return success_response(data=_order_to_dict(order))
+    return success_response(data=await _order_to_dict(order))
 
 
 @router.post("/", response_model=dict, status_code=201)
@@ -133,7 +160,7 @@ async def create_order(
         amount=str(payload.amount),
         notes=payload.notes,
     )
-    return success_response(data=_order_to_dict(order))
+    return success_response(data=await _order_to_dict(order))
 
 
 @router.patch("/{order_id}/status", response_model=dict)
@@ -160,4 +187,4 @@ async def update_order_status(
         from api.v1.escrow_proxy import _cancel_escrow_internal
         await _cancel_escrow_internal(order, session)
 
-    return success_response(data=_order_to_dict(updated))
+    return success_response(data=await _order_to_dict(updated))

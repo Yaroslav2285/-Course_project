@@ -30,6 +30,7 @@ class OrderRead(BaseModel):
     seller_id: UUID
     seller_email: str | None = None
     buyer_email: str | None = None
+    blockchain_verified: bool = False
     amount: Decimal
     status: str
     notes: str | None
