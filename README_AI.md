@@ -63,6 +63,8 @@ Redis :6377 — кеширование (зарезервировано)
 - `Makefile` — `up`, `down`, `test`, `lint`, `sast`, `build`
 - `.env.example` — шаблон с дефолтными значениями
 - `.gitignore`, `.editorconfig`, `.gitattributes`, `.pre-commit-config.yaml`
+- `.github/workflows/ci.yml` — GitHub Actions: lint (ruff, go vet), test (pytest, go test), SAST (bandit, gosec) на push/PR
+- **Проверка Phase 1: 7/7 ✅**
 
 ### Этап 2 — Модели данных и миграции
 
@@ -632,7 +634,7 @@ get `/services/my` возвращал только 20 товаров (дефол
 7. **Sortable orders** — кликабельные заголовки Amount/Status/Date в таблицах заказов клиента и исполнителя. Первый клик — по возрастанию, второй — по убыванию. Серый `⇅` на неактивных, синий `▲`/`▼` на активной колонке.
 8. **Card method unavailable** — в модалке пополнения кошелька способ "Банковская карта" отображается как disabled с текстом "(недоступно)".
 
-**Ветка:** `step_10`
+**Ветка:** `step_10` (Phase 10); `step_12` (Phase 1 verification — CI)
 
 ## Текущее состояние
 
