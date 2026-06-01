@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Blockchain audit page (Phase 7.4)
 // LR #10: Multi-lang/REST — fetch audit via chain proxy
 // LR #12: AI Integration — skeleton, empty, error, integrity check

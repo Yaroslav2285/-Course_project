@@ -1,3 +1,5 @@
+// LR #7: Frontend/UI
+// LR #8: Multi-user/Security
 // LR #6: Web/DB — Enhanced fetch wrapper with retry + timeout (Phase 7.5)
 // LR #10: Multi-lang/REST — X-Request-ID, 401 redirect, retry logic, timeout
 // LR #12: AI Integration — retry with exponential backoff

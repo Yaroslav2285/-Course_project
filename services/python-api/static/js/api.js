@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — API client for Service Marketplace
 // LR #10: Multi-lang/REST — unified fetch wrapper with JWT auth
 

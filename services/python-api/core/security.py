@@ -1,5 +1,6 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+# LR #8: Multi-user/Security — JWT, bcrypt, role-based auth
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt

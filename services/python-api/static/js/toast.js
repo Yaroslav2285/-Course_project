@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Unified toast notification system
 // LR #10: Multi-lang/REST — ARIA-live, keyboard support
 // LR #15: Security/UX — auto-hide, focus-friendly, stackable

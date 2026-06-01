@@ -1,5 +1,6 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+# LR #8: Multi-user/Security — error handling, 401/403/404/409
 import logging as _logging
 
 from fastapi import HTTPException, Request

@@ -1,3 +1,5 @@
+// LR #7: Frontend/UI
+// LR #8: Multi-user/Security
 // Admin dispute management — list + resolve
 
 var _disputeActionInProgress = {};

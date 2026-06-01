@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Dashboard logic with escrow state machine
 // LR #10: Multi-lang/REST — escrow proxy calls with idempotency
 // LR #12: AI Integration — role-based UI, debounce, optimistic updates

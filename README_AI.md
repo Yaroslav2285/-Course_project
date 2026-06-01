@@ -261,7 +261,7 @@ services/python-api/
 - Auth: JWT access+refresh токены в `localStorage`
 - Ролевой редирект: client → `/dashboard/client`, executor → `/dashboard/executor` (никогда на `/`)
 - Статика: `/api/static/...` (из-за `root_path="/api"` в конфиге)
-- Комментарии: `# LR #6`, `# LR #10`, `# LR #12`
+- Комментарии: `# LR #6`, `# LR #7`, `# LR #8`, `# LR #10`, `# LR #12`, `# LR #15`
 
 ### Этап 7.2 — Каталог услуг с фильтрацией и пагинацией
 

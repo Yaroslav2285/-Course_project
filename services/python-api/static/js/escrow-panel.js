@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Escrow panel with state-machine visualization (Phase 7.4)
 // LR #10: Multi-lang/REST — escrow actions via proxy with idempotency
 // LR #12: AI Integration — skeleton, error, optimistic UI, debounce

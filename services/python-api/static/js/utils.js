@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Utility functions for Service Marketplace UI
 // LR #12: AI Integration — debounce, escapeHtml, renderBadge
 // LR #15: Security/UX — showToast delegated to toast.js, backwards compatible

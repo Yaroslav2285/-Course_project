@@ -1,5 +1,6 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+# LR #10: Multi-lang/REST — router aggregation
 from fastapi import APIRouter
 
 from api.v1.auth import router as auth_router

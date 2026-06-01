@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Catalog page: filters, grid, pagination
 // LR #10: Multi-lang/REST — Client-side filtering & sorting
 // LR #12: AI Integration — skeleton, empty/error states, role-aware cards

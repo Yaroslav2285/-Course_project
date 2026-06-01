@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Order creation modal (Phase 7.6)
 // LR #10: Multi-lang/REST — creates order via API, 422 handling
 // LR #12: AI Integration — validation, spinner, toast, redirect

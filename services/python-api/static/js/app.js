@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Main entry point for Service Marketplace UI
 // LR #12: AI Integration — page-specific initialization
 

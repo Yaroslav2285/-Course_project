@@ -1,3 +1,4 @@
+// LR #7: Frontend/UI
 // LR #6: Web/DB — Client wallet module (Phase 7.6)
 // LR #10: Multi-lang/REST — wallet API calls with auth & idempotency
 // LR #12: AI Integration — debounce, polling

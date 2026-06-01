@@ -1,3 +1,5 @@
+// LR #7: Frontend/UI
+// LR #8: Multi-user/Security
 // LR #6: Web/DB — Authentication module for Service Marketplace
 // LR #10: Multi-lang/REST — JWT-based auth with role-based redirect
 // LR #12: AI Integration — login, register, logout, navbar update
