@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_disputes_status ON disputes(status);
 func DefaultTestDSN() string {
 	dsn := os.Getenv("TEST_DB_DSN")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5432/go_escrow_test?sslmode=disable"
+		dsn = "postgres://postgres:postgres@localhost:5432/go_escrow_test?sslmode=disable" // #nosec G101
 	}
 	return dsn
 }
@@ -79,12 +79,12 @@ func NewTestDB(dsn string) (*db.Database, error) {
 	sqldb.SetConnMaxLifetime(1 * time.Minute)
 
 	if err := sqldb.Ping(); err != nil {
-		sqldb.Close()
+		_ = sqldb.Close() // #nosec G104
 		return nil, fmt.Errorf("testutil: ping: %w", err)
 	}
 
 	if _, err := sqldb.Exec(migrationSQL); err != nil {
-		sqldb.Close()
+		_ = sqldb.Close() // #nosec G104
 		return nil, fmt.Errorf("testutil: migrations: %w", err)
 	}
 

@@ -77,12 +77,12 @@ async def migrate():
 
     async with engine.begin() as conn:
         for table_name, _ in reversed(TABLE_ORDER):
-            await conn.execute(text(f"DELETE FROM {table_name}"))
+            await conn.execute(text(f"DELETE FROM {table_name}"))  # nosec B608
             print(f"  Cleared {table_name}")
 
     async with engine.connect() as conn:
         for table_name, model in TABLE_ORDER:
-            cursor = await sqlite_conn.execute(f"SELECT * FROM {table_name}")
+            cursor = await sqlite_conn.execute(f"SELECT * FROM {table_name}")  # nosec B608
             rows = await cursor.fetchall()
             if not rows:
                 print(f"  {table_name}: 0 rows (skipping)")
@@ -103,7 +103,7 @@ async def migrate():
                 try:
                     async with conn.begin_nested():
                         await conn.execute(
-                            text(f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"),
+                            text(f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"),  # nosec B608
                             data,
                         )
                 except IntegrityError:

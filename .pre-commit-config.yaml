@@ -22,3 +22,12 @@ repos:
     rev: v4.8.0
     hooks:
       - id: end-of-file-fixer
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        args: ["-r", "services/python-api"]
+        pass_filenames: false
+
+

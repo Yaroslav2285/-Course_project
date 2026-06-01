@@ -143,6 +143,7 @@ func (s *EscrowService) AdvanceStatus(ctx context.Context, id uuid.UUID, nextSta
 
 	s.log.Info("escrow status advanced", zap.String("id", id.String()), zap.String("status", string(nextStatus)))
 
+	// #nosec G118 — intentional fire-and-forget must outlive request context
 	go s.emitBlockchainEvent(context.Background(), account, string(nextStatus))
 
 	return account, nil

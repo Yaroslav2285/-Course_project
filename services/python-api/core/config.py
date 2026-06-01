@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     API_DOCS_URL: str = "/docs"
     API_REDOC_URL: str = "/redoc"
 
-    SERVER_HOST: str = "0.0.0.0"
+    SERVER_HOST: str = "0.0.0.0"  # nosec B104 — expected for container
     SERVER_PORT: int = 8000
     SERVER_RELOAD: bool = True
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
