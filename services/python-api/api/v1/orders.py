@@ -92,22 +92,15 @@ async def list_orders(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(
-        None, pattern=r"^(pending|funded|released|cancelled|disputed|resolved)$"
+        None, pattern=r"^(pending|funded|in_progress|completed|released|cancelled|disputed|resolved|resolved_refund|resolved_release)$"
     ),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
     repo = OrderRepository(session)
-    filters: dict = {}
-    if status:
-        filters["status"] = status
     items, total = await repo.list_by_buyer(
-        buyer_id=current_user.id, limit=limit, offset=offset
+        buyer_id=current_user.id, limit=limit, offset=offset, status=status
     )
-    if filters:
-        filtered = [o for o in items if o.status == status]
-        total = len(filtered)
-        items = filtered[offset : offset + limit]
     order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
@@ -117,22 +110,15 @@ async def list_sold_orders(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(
-        None, pattern=r"^(pending|funded|released|cancelled|disputed|resolved)$"
+        None, pattern=r"^(pending|funded|in_progress|completed|released|cancelled|disputed|resolved|resolved_refund|resolved_release)$"
     ),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
     repo = OrderRepository(session)
-    filters: dict = {}
-    if status:
-        filters["status"] = status
     items, total = await repo.list_by_seller(
-        seller_id=current_user.id, limit=limit, offset=offset
+        seller_id=current_user.id, limit=limit, offset=offset, status=status
     )
-    if filters:
-        filtered = [o for o in items if o.status == status]
-        total = len(filtered)
-        items = filtered[offset : offset + limit]
     order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 

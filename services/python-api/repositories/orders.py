@@ -17,14 +17,20 @@ class OrderRepository(RepositoryBase[Order]):
         return await self.get(id=order_id)
 
     async def list_by_buyer(
-        self, buyer_id: UUID, limit: int = 20, offset: int = 0
+        self, buyer_id: UUID, limit: int = 20, offset: int = 0, status: str | None = None
     ) -> tuple[list[Order], int]:
-        return await self._list_ordered(limit=limit, offset=offset, buyer_id=buyer_id)
+        filters = {"buyer_id": buyer_id}
+        if status is not None:
+            filters["status"] = status
+        return await self._list_ordered(limit=limit, offset=offset, **filters)
 
     async def list_by_seller(
-        self, seller_id: UUID, limit: int = 20, offset: int = 0
+        self, seller_id: UUID, limit: int = 20, offset: int = 0, status: str | None = None
     ) -> tuple[list[Order], int]:
-        return await self._list_ordered(limit=limit, offset=offset, seller_id=seller_id)
+        filters = {"seller_id": seller_id}
+        if status is not None:
+            filters["status"] = status
+        return await self._list_ordered(limit=limit, offset=offset, **filters)
 
     async def create_order(
         self,
