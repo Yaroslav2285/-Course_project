@@ -51,8 +51,16 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")
+    from app.services.escrow_cache import _get_client as _init_cache
+    cache_client = await _init_cache()
+    if cache_client is not None and cache_client is not False:
+        logger.info("Redis cache ready")
+    else:
+        logger.warning("Redis cache unavailable, using in-memory fallback")
     yield
     logger.info("Shutting down Service Marketplace API")
+    from app.services.escrow_cache import close as close_redis
+    await close_redis()
     await engine.dispose()
 
 

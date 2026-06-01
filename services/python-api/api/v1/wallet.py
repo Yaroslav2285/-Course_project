@@ -16,6 +16,7 @@ from repositories.orders import OrderRepository
 from schemas.wallet import TopUpRequest, PayRequest, WalletRead, TransactionRead
 from schemas.users import UserRead
 from app.services.escrow_client import EscrowClient, EscrowClientError
+from app.services.escrow_cache import cache_set, get_escrow_id
 
 router = APIRouter()
 
@@ -64,8 +65,7 @@ async def pay_order(
     ec = EscrowClient()
     go_ok = False
     try:
-        from api.v1.escrow_proxy import _escrow_cache, _cache_set
-        escrow_id = _escrow_cache.get(str(order.id))
+        escrow_id = await get_escrow_id(str(order.id))
         if not escrow_id:
             result = await ec.create_escrow(
                 order_id=str(order.id),
@@ -73,7 +73,7 @@ async def pay_order(
                 idempotency_key=idempotency_key,
             )
             escrow_id = result.get("id") or result.get("escrow_id") or str(uuid.uuid4())
-            _cache_set(str(order.id), escrow_id, result)
+            await cache_set(str(order.id), escrow_id, result)
         await ec.fund_escrow(
             escrow_id=escrow_id,
             amount=str(order.amount),
@@ -94,8 +94,6 @@ async def pay_order(
             raise BadRequestException(
                 f"Escrow service error ({exc.code}), payment rolled back"
             )
-    except ImportError:
-        pass
 
     order = await order_repo.update_status(order, OrderStatus.funded.value)
     wallet = await wallet_repo.get_by_user_id(current_user.id)

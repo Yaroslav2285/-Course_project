@@ -142,6 +142,9 @@ func (s *EscrowService) AdvanceStatus(ctx context.Context, id uuid.UUID, nextSta
 	account.UpdatedAt = time.Now().UTC()
 
 	s.log.Info("escrow status advanced", zap.String("id", id.String()), zap.String("status", string(nextStatus)))
+
+	go s.emitBlockchainEvent(context.Background(), account, string(nextStatus))
+
 	return account, nil
 }
 

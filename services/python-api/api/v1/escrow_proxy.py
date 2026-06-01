@@ -1,7 +1,3 @@
-# LR #10: Multi-lang/REST — escrow proxy bridging frontend → Go escrow
-# LR #6: Web/DB — fallback to direct order status update when Go unavailable
-# LR #12: AI Integration — in-memory order_id→escrow_id cache, idempotency
-
 import uuid
 from typing import Any
 
@@ -9,6 +5,7 @@ from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.escrow_client import EscrowClient, EscrowClientError
+from app.services.escrow_cache import cache_set, cache_get, get_escrow_id, delete as cache_delete
 from core.db import get_db
 from core.deps import get_current_user
 from core.exceptions import NotFoundException
@@ -27,20 +24,12 @@ def _get_escrow_client() -> EscrowClient:
     return EscrowClient()
 
 
-def _cache_set(order_id: str, escrow_id: str, data: dict | None = None) -> None:
-    _escrow_cache[order_id] = escrow_id
-    if data:
-        _escrow_data[escrow_id] = data
+async def _cache_set(order_id: str, escrow_id: str, data: dict | None = None) -> None:
+    await cache_set(order_id, escrow_id, data)
 
 
-def _cache_get(order_id: str) -> dict | None:
-    escrow_id = _escrow_cache.get(order_id)
-    if not escrow_id:
-        return None
-    data = _escrow_data.get(escrow_id)
-    if not data:
-        return None
-    return data
+async def _cache_get(order_id: str) -> dict | None:
+    return await cache_get(order_id)
 
 
 @router.get("/by-order/{order_id}")
@@ -49,16 +38,16 @@ async def get_escrow_by_order(
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    cached = _cache_get(order_id)
+    cached = await _cache_get(order_id)
     if cached:
         return success_response(data=cached)
 
     client = _get_escrow_client()
     try:
-        escrow_id = _escrow_cache.get(order_id)
+        escrow_id = await get_escrow_id(order_id)
         if escrow_id:
             data = await client._request("GET", f"/v1/escrow/{escrow_id}")
-            _cache_set(order_id, escrow_id, data)
+            await _cache_set(order_id, escrow_id, data)
             return success_response(data=data)
     except EscrowClientError:
         pass
@@ -78,7 +67,7 @@ async def fund_escrow(
     if not order:
         raise NotFoundException("Order not found")
 
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
     client = _get_escrow_client()
 
     try:
@@ -89,7 +78,7 @@ async def fund_escrow(
                 idempotency_key=idempotency_key,
             )
             escrow_id = result.get("id") or result.get("escrow_id") or str(uuid.uuid4())
-            _cache_set(order_id, escrow_id, result)
+            await _cache_set(order_id, escrow_id, result)
 
         await client.fund_escrow(
             escrow_id=escrow_id,
@@ -130,7 +119,7 @@ async def advance_escrow(
 ):
     target_status = body.get("status", "IN_PROGRESS")
     client = _get_escrow_client()
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
 
     try:
         if escrow_id:
@@ -178,7 +167,7 @@ async def complete_escrow(
     session: AsyncSession = Depends(get_db),
 ):
     client = _get_escrow_client()
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
 
     try:
         if escrow_id:
@@ -212,7 +201,7 @@ async def release_escrow(
     session: AsyncSession = Depends(get_db),
 ):
     client = _get_escrow_client()
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
 
     try:
         if escrow_id:
@@ -261,7 +250,7 @@ async def dispute_escrow(
 ):
     reason = (body or {}).get("reason", "Disputed by user")
     client = _get_escrow_client()
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
 
     try:
         if escrow_id:
@@ -296,7 +285,7 @@ async def cancel_proxy(
     session: AsyncSession = Depends(get_db),
 ):
     client = _get_escrow_client()
-    escrow_id = _escrow_cache.get(order_id)
+    escrow_id = await get_escrow_id(order_id)
 
     try:
         if escrow_id:

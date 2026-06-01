@@ -16,6 +16,7 @@ from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.orders import OrderCreate, OrderRead, OrderStatusUpdate
 from schemas.users import UserRead
 from app.services.escrow_client import EscrowClient, EscrowClientError
+from app.services.escrow_cache import get_escrow_id
 
 router = APIRouter()
 
@@ -157,12 +158,11 @@ async def update_order_status(
         OrderStatus.funded.value, OrderStatus.in_progress.value,
     ):
         try:
-            from api.v1.escrow_proxy import _escrow_cache
-            escrow_id = _escrow_cache.get(str(order.id))
+            escrow_id = await get_escrow_id(str(order.id))
             if escrow_id:
                 ec = EscrowClient()
                 await ec.cancel_escrow(escrow_id=escrow_id)
-        except (EscrowClientError, ImportError):
+        except EscrowClientError:
             pass
 
         wallet_repo = WalletRepository(session)

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 
     GO_ESCROW_BASE_URL: str = "http://go-escrow:8081"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     LOG_LEVEL: str = "INFO"
 
