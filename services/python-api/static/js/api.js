@@ -164,10 +164,10 @@ async function apiFetchService(id) {
   return apiFetch(`/services/${id}`);
 }
 
-async function apiCreateService(title, description, price) {
+async function apiCreateService(title, description, price, category, discount) {
   return apiFetch('/services/', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price }),
+    body: JSON.stringify({ title, description, price, category, discount }),
   });
 }
 
