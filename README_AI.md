@@ -165,7 +165,7 @@ CREATED → FUNDED → IN_PROGRESS → COMPLETED → RELEASED
 | POST | `/escrow/{id}/advance` | Продвинуть статус (FUNDED→IN_PROGRESS→COMPLETED) |
 | GET | `/health` | Healthcheck |
 
-**Тесты:** 58 test functions: domain (50+), service (9), handler (15), clients (5), postgres integration (3), top-level integration (2). **Покрытие по пакетам:** domain ~95% (отлично), service ~55%, handler ~50%, clients ~45%, repository ~5%, middleware/idempotency/router/config/db/main ~0%. **Общая оценка: ~30-40%**
+**Тесты:** ~116 test functions across 7 packages: domain (50+), service (13), handler (16), middleware (12), idempotency (9), router (6), clients (14, incl. 9 retry queue), repository (21, on step_4), config (4), db (4), postgres integration (3), top-level integration (2). **Покрытие по пакетам:** domain ~95%, service ~75%, handler ~70%, middleware/idempotency ~85%, router ~90%, clients ~55%, repository ~80% (step_4), config ~100%, db ~100%. **Общая оценка: ~70-80%**
 
 ### Этап 5 — Blockchain Simulator
 
@@ -453,6 +453,12 @@ Go не мог корректно обработать cancel (не было CAN
 3. **`HandleCancel()` хендлер** — `POST /:id/cancel` с idempotency middleware.
 4. **Полный набор тестов**: domain (8), service (2), handler (3), integration (мок + route).
 
+**Решение (Phases 3–5 — Go test coverage):**
+1. **Phase 3 — Middleware + Idempotency tests** (21 тестов): RateLimiter, CORS, RequestID, Logger, Recovery, MiddlewareStack, Idempotency Store + Middleware (no-key/first-pass/cached/5xx-not-cached)
+2. **Phase 4 — Repository sqlmock tests** (21 тестов на ветке `step_4`): все 8 методов репозитория с success + error paths (sql.ErrNoRows, rows==0, DB errors)
+3. **Phase 5 — Router + Retry queue tests** (15 тестов): router composition (routes, headers, 404, CORS preflight), retry queue (submit, retry-success, queue-full, exhausted, defaults)
+4. **Bug fixes**: LoggerMiddleware after RequestIDMiddleware; gin.SetMode перенесён в main.go
+
 **Решение (Step 2 — Python):**
 1. **`escrow_client.cancel_escrow()`** — новый метод клиента Python→Go.
 2. **`escrow_proxy.fund_escrow`** — исправлен `amount="0"` на `str(order.amount)`.
@@ -505,13 +511,13 @@ Go не мог корректно обработать cancel (не было CAN
 **Известные проблемы:**
 - ❌ **In-memory cache escrow_id** — `_escrow_cache` теряется при рестарте Python API. Для production нужен Redis. (Addresses via Redis cache in Phase 8+)
 - ❌ **No PostgreSQL in integration tests** — Go integration test использует моки, не реальную БД. (Built-tag-guarded PostgreSQL tests exist but require `TEST_DB_DSN`)
-- ❌ **Go test coverage gaps (~30-40%)** — middleware, idempotency, router, config, db, blockchain events, retry queue, и бóльшая часть error paths не покрыты тестами
+- ⚠️ **Phase 4 repository tests на отдельной ветке** — 21 sqlmock тест существует в branch `step_4`, не слиты в `step_8`
 
 **Тесты:**
 - Python: 54/54 passed
-- Go: 58 тестовых функций, все OK (domain ~95%, service ~55%, handler ~50%, clients ~45%, repository ~5%, middleware+idempotency+router+config+db+main ~0%)
+- Go: ~116 тестовых функций, все OK (domain ~95%, service ~75%, handler ~70%, middleware/idempotency ~85%, router ~90%, clients ~55%, config ~100%, db ~100%, repository ~80% на `step_4`)
 - Blockchain: 26/26 passed (99% coverage)
-- **Общая оценка покрытия Go: ~30-40%** — домен отлично, инфраструктура не покрыта
+- **Общая оценка покрытия Go: ~70-80%** — почти все пакеты покрыты (кроме main)
 
 **SAST:**
 - bandit: 0 Critical/High
