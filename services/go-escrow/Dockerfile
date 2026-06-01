@@ -1,7 +1,7 @@
 # LR #11: Containerization — multi-stage build for minimal image size
 # LR #15: SAST — non-root user, distroless base image
 
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
