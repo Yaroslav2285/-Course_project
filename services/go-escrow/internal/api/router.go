@@ -10,14 +10,12 @@ import (
 )
 
 func NewRouter(svc *service.EscrowService, log *zap.Logger, rateLimiter *RateLimiter, idempotencyStore *IdempotencyStore) *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
-
 	r := gin.New()
 
-	// Global middleware — order matters
+	// Global middleware — order matters (RequestID before Logger — Logger reads request_id)
 	r.Use(RecoveryMiddleware(log))
-	r.Use(LoggerMiddleware(log))
 	r.Use(RequestIDMiddleware())
+	r.Use(LoggerMiddleware(log))
 	r.Use(CORSMiddleware())
 
 	// Health endpoint (no auth, no rate limit)

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -81,6 +82,7 @@ func main() {
 	idempStore := api.NewIdempotencyStore(cfg.IdempotencyTTL)
 	defer idempStore.Stop()
 
+	gin.SetMode(gin.ReleaseMode)
 	router := api.NewRouter(svc, logger, rateLimiter, idempStore)
 
 	srv := &http.Server{
