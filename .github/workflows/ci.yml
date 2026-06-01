@@ -1,0 +1,72 @@
+# LR #1: Git/CI — GitHub Actions
+name: CI
+
+on:
+  push:
+    branches: [master, step_*]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint-test-sast:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: app_db
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: ChangeMe123!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r services/python-api/requirements.txt
+          pip install ruff bandit
+
+      - name: Install Go dependencies
+        run: |
+          cd services/go-escrow && go mod tidy
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Lint Python (ruff)
+        run: cd services/python-api && ruff check .
+
+      - name: Lint Go (go vet)
+        run: cd services/go-escrow && go vet ./...
+
+      - name: Test Python (pytest)
+        env:
+          DB_URL: postgresql+asyncpg://app_user:ChangeMe123!@localhost:5432/app_db
+          JWT_SECRET: test-secret
+        run: cd services/python-api && pytest -v --cov --cov-report=term --cov-report=lcov:coverage/lcov.info --junitxml=coverage/junit.xml
+
+      - name: Test Go
+        run: cd services/go-escrow && go test ./... -v -cover -coverprofile=cover.out
+
+      - name: SAST Python (bandit)
+        run: cd services/python-api && bandit -r . -f json -o bandit-report.json
+
+      - name: SAST Go (gosec)
+        run: cd services/go-escrow && gosec -fmt json -out gosec-report.json ./...
