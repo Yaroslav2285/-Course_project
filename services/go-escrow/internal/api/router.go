@@ -30,8 +30,8 @@ func NewRouter(svc *service.EscrowService, log *zap.Logger, rateLimiter *RateLim
 	// API v1 group
 	v1 := r.Group("/v1/escrow")
 	{
-		// Create escrow account
-		v1.POST("/", IdempotencyMiddleware(idempotencyStore), handler.Create)
+		// Create escrow account (no trailing slash — avoids 307 redirect in Gin)
+		v1.POST("", IdempotencyMiddleware(idempotencyStore), handler.Create)
 
 		// Get by ID
 		v1.GET("/:id", handler.GetByID)
