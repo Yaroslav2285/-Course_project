@@ -10,8 +10,9 @@ from core.db import get_db
 from core.deps import get_current_user
 from core.exceptions import NotFoundException
 from core.responses import success_response
-from models.orders import Order
+from models.orders import Order, OrderStatus
 from repositories.orders import OrderRepository
+from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.orders import OrderCreate, OrderRead, OrderStatusUpdate
 from schemas.users import UserRead
 
@@ -140,5 +141,40 @@ async def update_order_status(
     order = await repo.get_by_id(order_id)
     if not order:
         raise NotFoundException("Order not found")
+
+    prev_status = order.status
     updated = await repo.update_status(order, status=payload.status)
+
+    if payload.status == OrderStatus.cancelled.value and prev_status in (
+        OrderStatus.funded.value, OrderStatus.in_progress.value,
+    ):
+        wallet_repo = WalletRepository(session)
+        try:
+            await wallet_repo.transfer(
+                from_user_id=ESCROW_USER_ID,
+                to_user_id=order.buyer_id,
+                amount=order.amount,
+                reference_id=order.id,
+                txn_type="refund",
+                description=f"Refund for cancelled order {order.id}",
+            )
+        except ValueError:
+            pass
+
+    if payload.status == OrderStatus.released.value and prev_status in (
+        OrderStatus.completed.value, OrderStatus.funded.value, OrderStatus.in_progress.value,
+    ):
+        wallet_repo = WalletRepository(session)
+        try:
+            await wallet_repo.transfer(
+                from_user_id=ESCROW_USER_ID,
+                to_user_id=order.seller_id,
+                amount=order.amount,
+                reference_id=order.id,
+                txn_type="transfer",
+                description=f"Release payment for order {order.id}",
+            )
+        except ValueError:
+            pass
+
     return success_response(data=OrderRead.model_validate(updated).model_dump())

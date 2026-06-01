@@ -375,6 +375,30 @@ services/python-api/
 | services | 0 (удалены) | **30** |
 | orders | 0 (удалены) | **1** |
 
+### Этап 7.7 — Escrow money flow: transfer + holding account + payout
+
+**Проблема:** при `fund` деньги списывались с покупателя и исчезали из системы;
+при `release` продавец не получал оплату.
+
+**Решение:**
+1. **`WalletRepository.transfer(from_uid, to_uid, amount)`** — атомарный перевод между
+   кошельками двух пользователей: дебет отправителя + кредит получателя + две транзакции.
+2. **Escrow holding account** — системный пользователь `escrow@marketplace.local`
+   (UUID `00000000-0000-0000-0000-000000000001`), создаётся лениво при первом `fund`.
+3. **Fund** (`POST /v1/wallet/pay`): buyer → escrow holding (вместо простого списания).
+4. **Release** (`POST /v1/escrow/{id}/release` + fallback `PATCH /orders/{id}/status`):
+   escrow holding → seller.
+5. **Cancel** (`PATCH /orders/{id}/status`): escrow holding → buyer (refund), если заказ
+   был в статусе `funded` или `in_progress`.
+6. В `TransactionType` добавлен `transfer` для проводок перевода.
+
+**Файлы:**
+- `repositories/wallets.py` — `transfer()` + `get_escrow_wallet()`
+- `api/v1/wallet.py` — fund использует `transfer()` с `ESCROW_USER_ID`
+- `api/v1/escrow_proxy.py` — release переводит escrow → seller
+- `api/v1/orders.py` — cancel → refund, release → payout (fallback)
+- `models/wallet.py` — добавлен `TransactionType.transfer`
+
 ## Текущее состояние
 
 **Docker: 5 контейнеров (все healthy)**
@@ -395,16 +419,16 @@ services/python-api/
 - ✅ Wallet — карточка баланса, пополнение, история транзакций, навигация
 - ✅ Wallet page (`/wallet`) — отдельная страница с историей транзакций
 - ✅ Escrow proxy — `/v1/escrow/:order_id/:action` с Go-first → fallback на PATCH
-- ✅ Wallet pay — `POST /v1/wallet/pay` списывает с кошелька и обновляет статус заказа
+- ✅ Wallet pay — `POST /v1/wallet/pay` переводит buyer → escrow holding
+- ✅ Release payout — escrow holding → seller (через proxy + fallback)
+- ✅ Cancel refund — escrow holding → buyer (если деньги были в эскроу)
 - ✅ Blockchain audit trail — `/audit/{order_id}` с SHA-256 верификацией
 - ✅ Cache-busting — `?v=N` на всех CSS/JS
 - ✅ Navbar — статический HTML с JS-переключением между гостем и user
 - ✅ Footer — copyright на всех страницах, прижат к низу
 
 **Известные проблемы:**
-- ❌ **Деньги не доходят до продавца** — при `release` статус заказа меняется, но баланс продавца не пополняется. Нужен escrow holding account + transfer между кошельками.
-- ❌ **Go-escrow не держит реальные средства** — Python API передаёт `amount="0"` при fund, все средства только в Python БД.
-- ❌ **Нет `WalletRepository.transfer()`** — нет функции перевода между кошельками.
+- ❌ **Go-escrow не держит реальные средства** — Python API передаёт `amount="0"` при fund, деньги только в Python БД. Для продакшена нужен escrow-счёт в Go.
 
 **Тесты:**
 - Python: 42/42 passed
@@ -448,9 +472,9 @@ services/python-api/
 15. **Escrow fallback в JS** — при `e.status === 404 || e.status === 0` (Go не доступен) JS вызывает `apiUpdateOrderStatus()` напрямую, минуя escrow-поток.
 16. **Cache-busting через `?v=N`** — версионирование CSS/JS через query-параметр, без изменения имён файлов. Инкрементировать при изменении статики.
 17. **Logout на `/`** — после выхода пользователь видит landing page, а не `/login`, что улучшает UX.
-18. **Wallet/pay (escrow fund)** — `POST /v1/wallet/pay` списывает сумму с кошелька покупателя, создаёт `escrow_fund` транзакцию и переводит заказ в `funded`. Go-escrow НЕ вызывается (все средства в Python БД).
-19. **Escrow release не выплачивает продавцу** — при `release` (через `PATCH /v1/orders/{id}/status` или Go-escrow) статус заказа меняется на `released`, но баланс продавца не пополняется. Нужен механизм: списание с escrow-счёта → зачисление продавцу.
-20. **Нет `WalletRepository.transfer(from_id, to_id, amount)`** — необходим для перевода средств между кошельками. Сейчас есть только `update_balance(wallet, delta)` для одного кошелька.
+18. **Wallet/pay (escrow fund)** — `POST /v1/wallet/pay` переводит сумму с кошелька покупателя на escrow holding account (системный пользователь `escrow@marketplace.local`). Go-escrow НЕ вызывается (все средства в Python БД).
+19. **Escrow release выплачивает продавцу** — при `release` (через `POST /v1/escrow/{id}/release` или fallback `PATCH /orders/{id}/status`) деньги переводятся с escrow holding на кошелёк продавца через `WalletRepository.transfer()`.
+20. **`WalletRepository.transfer(from_uid, to_uid, amount)`** — атомарный перевод: дебет отправителя + кредит получателя + две транзакции. Используется для escrow fund (buyer→escrow), release (escrow→seller) и cancel refund (escrow→buyer).
 
 ## Команды для быстрого старта
 

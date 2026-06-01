@@ -9,7 +9,7 @@ from core.exceptions import NotFoundException, BadRequestException
 from core.responses import success_response
 from models.wallet import TransactionStatus
 from models.orders import OrderStatus
-from repositories.wallets import WalletRepository, TransactionRepository
+from repositories.wallets import WalletRepository, TransactionRepository, ESCROW_USER_ID
 from repositories.orders import OrderRepository
 from schemas.wallet import TopUpRequest, PayRequest, WalletRead, TransactionRead
 from schemas.users import UserRead
@@ -34,7 +34,6 @@ async def pay_order(
     session: AsyncSession = Depends(get_db),
 ):
     wallet_repo = WalletRepository(session)
-    txn_repo = TransactionRepository(session)
     order_repo = OrderRepository(session)
 
     order = await order_repo.get_by_id(payload.order_id)
@@ -49,21 +48,21 @@ async def pay_order(
     if wallet.balance < order.amount:
         raise BadRequestException("Insufficient wallet balance")
 
-    wallet = await wallet_repo.update_balance(wallet, -order.amount)
-    txn = await txn_repo.create_transaction(
-        wallet_id=wallet.id,
-        type="escrow_fund",
-        amount=-order.amount,
-        status=TransactionStatus.success.value,
+    debit_txn, credit_txn = await wallet_repo.transfer(
+        from_user_id=current_user.id,
+        to_user_id=ESCROW_USER_ID,
+        amount=order.amount,
         reference_id=order.id,
+        txn_type="escrow_fund",
         description=f"Payment for order {order.id}",
     )
     order = await order_repo.update_status(order, OrderStatus.funded.value)
+    wallet = await wallet_repo.get_by_user_id(current_user.id)
 
     return success_response(
         data={
             "balance": str(wallet.balance),
-            "transaction": TransactionRead.model_validate(txn).model_dump(),
+            "transaction": TransactionRead.model_validate(debit_txn).model_dump(),
         }
     )
 

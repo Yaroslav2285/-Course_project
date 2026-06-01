@@ -8,7 +8,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.wallet import Wallet, Transaction, TransactionType, TransactionStatus
+from models.users import User
 from repositories.base import RepositoryBase
+
+ESCROW_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 class WalletRepository(RepositoryBase[Wallet]):
@@ -33,6 +36,56 @@ class WalletRepository(RepositoryBase[Wallet]):
 
     async def update_balance(self, wallet: Wallet, delta: Decimal) -> Wallet:
         return await self.update(wallet, balance=wallet.balance + delta)
+
+    async def get_escrow_wallet(self) -> Wallet:
+        escrow_user = await self.session.get(User, ESCROW_USER_ID)
+        if not escrow_user:
+            escrow_user = User(
+                id=ESCROW_USER_ID,
+                email="escrow@marketplace.local",
+                hashed_password="*",  # system account, never logs in
+                role="admin",
+            )
+            self.session.add(escrow_user)
+            await self.session.flush()
+        return await self.get_or_create(ESCROW_USER_ID)
+
+    async def transfer(
+        self,
+        from_user_id: UUID,
+        to_user_id: UUID,
+        amount: Decimal,
+        reference_id: UUID | None = None,
+        txn_type: str = "transfer",
+        description: str | None = None,
+    ) -> tuple[Transaction, Transaction]:
+        from_wallet = await self.get_or_create(from_user_id)
+        to_wallet = await self.get_or_create(to_user_id)
+
+        if from_wallet.balance < amount:
+            raise ValueError("Insufficient balance")
+
+        from_wallet = await self.update_balance(from_wallet, -amount)
+        to_wallet = await self.update_balance(to_wallet, amount)
+
+        txn_repo = TransactionRepository(self.session)
+        debit_txn = await txn_repo.create_transaction(
+            wallet_id=from_wallet.id,
+            type=txn_type,
+            amount=-amount,
+            status=TransactionStatus.success.value,
+            reference_id=reference_id,
+            description=description,
+        )
+        credit_txn = await txn_repo.create_transaction(
+            wallet_id=to_wallet.id,
+            type=txn_type,
+            amount=amount,
+            status=TransactionStatus.success.value,
+            reference_id=reference_id,
+            description=description,
+        )
+        return debit_txn, credit_txn
 
 
 class TransactionRepository(RepositoryBase[Transaction]):

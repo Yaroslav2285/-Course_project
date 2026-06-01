@@ -14,6 +14,7 @@ from core.deps import get_current_user
 from core.exceptions import NotFoundException
 from core.responses import success_response
 from repositories.orders import OrderRepository
+from repositories.wallets import WalletRepository, ESCROW_USER_ID
 from schemas.users import UserRead
 
 router = APIRouter()
@@ -231,6 +232,20 @@ async def release_escrow(
     if not order:
         raise NotFoundException("Order not found")
     await repo.update_status(order, status="released")
+
+    wallet_repo = WalletRepository(session)
+    try:
+        await wallet_repo.transfer(
+            from_user_id=ESCROW_USER_ID,
+            to_user_id=order.seller_id,
+            amount=order.amount,
+            reference_id=order.id,
+            txn_type="transfer",
+            description=f"Release payment for order {order.id}",
+        )
+    except ValueError:
+        pass
+
     return success_response(
         data={
             "escrow_id": escrow_id,
