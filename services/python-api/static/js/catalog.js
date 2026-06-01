@@ -7,6 +7,7 @@ var filterState = {
   search: '',
   minPrice: null,
   maxPrice: null,
+  category: '',
   sort: 'newest',
   limit: 9,
   offset: 0,
@@ -41,6 +42,7 @@ async function loadServices() {
     var data = response.data || [];
     allServices = data;
 
+    populateCategoryFilter(allServices);
     applyClientFilters();
   } catch (err) {
     hideSkeletons();
@@ -48,6 +50,29 @@ async function loadServices() {
       return;
     }
     showError(err.message || 'Failed to load products');
+  }
+}
+
+// === Populate category dropdown from service data ===
+function populateCategoryFilter(services) {
+  var select = document.getElementById('filter-category');
+  if (!select) return;
+  var cats = {};
+  services.forEach(function (s) {
+    if (s.category) cats[s.category] = true;
+  });
+  var sorted = Object.keys(cats).sort();
+  // Keep current selection if any
+  var currentVal = select.value;
+  select.innerHTML = '<option value="">All Categories</option>';
+  sorted.forEach(function (c) {
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    select.appendChild(opt);
+  });
+  if (currentVal && cats[currentVal]) {
+    select.value = currentVal;
   }
 }
 
@@ -61,6 +86,11 @@ function applyClientFilters() {
     filtered = filtered.filter(function (s) {
       return s.title && s.title.toLowerCase().indexOf(search) !== -1;
     });
+  }
+
+  // Category filter
+  if (filterState.category) {
+    filtered = filtered.filter(function (s) { return s.category === filterState.category; });
   }
 
   // Price range
@@ -135,7 +165,7 @@ function renderPage() {
 var PRODUCT_CATEGORIES = [
   'Electronics', 'Clothing', 'Home & Garden', 'Books', 'Sports',
   'Toys', 'Health', 'Beauty', 'Automotive', 'Food',
-  'Music', 'Office', 'Pet Supplies', 'Baby', 'Jewelry',
+  'Music', 'Office', 'Pet Supplies', 'Baby', 'Jewelry', 'Other',
 ];
 
 var PRODUCT_SELLERS = [
@@ -192,11 +222,12 @@ function renderCards(services) {
     var formattedPrice = '$' + price.toFixed(2);
 
     var mock = getMockProductData(s, i);
+    var discountPct = (s.discount !== null && s.discount !== undefined && s.discount > 0) ? s.discount : mock.discount;
     var discountedPrice = price;
     var originalPriceStr = '';
-    var hasDiscount = mock.discount > 0;
+    var hasDiscount = discountPct > 0;
     if (hasDiscount) {
-      discountedPrice = price * (1 - mock.discount / 100);
+      discountedPrice = price * (1 - discountPct / 100);
       originalPriceStr = '$' + price.toFixed(2);
     }
 
@@ -214,8 +245,14 @@ function renderCards(services) {
         s.provider_id +
         '" data-price="' +
         s.price +
+        '" data-original-price="' +
+        (hasDiscount ? originalPriceStr.replace('$', '') : '') +
+        '" data-discounted-price="' +
+        discountedPrice.toFixed(2) +
         '" data-service-title="' +
         escapeHtml(s.title).replace(/"/g, '&quot;') +
+        '" data-service-description="' +
+        (s.description ? escapeHtml(s.description).replace(/"/g, '&quot;') : '') +
         '">Add to Cart</button>';
     } else if (role === 'provider') {
       btnHtml =
@@ -237,23 +274,30 @@ function renderCards(services) {
       s.provider_id +
       '" data-price="' +
       s.price +
+      '" data-original-price="' +
+      (hasDiscount ? originalPriceStr.replace('$', '') : '') +
+      '" data-discounted-price="' +
+      discountedPrice.toFixed(2) +
       '" data-service-title="' +
       escapeHtml(s.title).replace(/"/g, '&quot;') +
+      '" data-service-description="' +
+      (s.description ? escapeHtml(s.description).replace(/"/g, '&quot;') : '') +
       '">' +
       '<div class="service-card-image">' +
       '<img src="' + imageUrl + '" alt="' + escapeHtml(s.title) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
       '<div class="service-card-image-placeholder" style="display:none;">' +
       escapeHtml(s.title.charAt(0)) +
       '</div>' +
-      '<span class="product-category-badge">' +
-      escapeHtml(mock.category) +
-      '</span>' +
-      (hasDiscount ? '<span class="product-discount-badge">-' + mock.discount + '%</span>' : '') +
+      (s.category ? '<span class="product-category-badge">' + escapeHtml(s.category) + '</span>' : '') +
+      (hasDiscount ? '<span class="product-discount-badge">-' + discountPct + '%</span>' : '') +
       '</div>' +
       '<div class="service-card-body">' +
       '<h3 class="service-card-title">' +
       escapeHtml(s.title) +
       '</h3>' +
+      '<p class="service-card-description">' +
+      (s.description ? escapeHtml(s.description.length > 80 ? s.description.slice(0, 80) + '…' : s.description) : '') +
+      '</p>' +
       '<div class="product-rating">' +
       '<span class="product-rating-stars">' + starsHtml + '</span>' +
       '<span class="product-rating-score">' + mock.rating.toFixed(1) + '</span>' +
@@ -273,7 +317,7 @@ function renderCards(services) {
 
   grid.innerHTML = html;
 
-  // Attach card click — opens order modal
+  // Attach card click — opens order modal in view mode (any role)
   grid.querySelectorAll('.service-card').forEach(function (card) {
     card.addEventListener('click', function (e) {
       if (e.target.closest('.order-btn, .product-add-btn, a, button')) return;
@@ -281,7 +325,15 @@ function renderCards(services) {
       var providerId = card.getAttribute('data-provider-id');
       var price = card.getAttribute('data-price');
       var serviceTitle = card.getAttribute('data-service-title');
-      handleOrderClick(serviceId, providerId, price, serviceTitle);
+      var serviceDescription = card.getAttribute('data-service-description');
+      var originalPrice = card.getAttribute('data-original-price') || '';
+      var discountedPrice = card.getAttribute('data-discounted-price') || price;
+      var auth = checkAuth();
+      if (!auth.isAuthenticated) {
+        window.location.href = '/register';
+        return;
+      }
+      openOrderModal(serviceId, providerId, price, serviceTitle, serviceDescription, originalPrice, discountedPrice, auth.role !== 'client');
     });
   });
 
@@ -294,13 +346,16 @@ function renderCards(services) {
       var providerId = btn.getAttribute('data-provider-id');
       var price = btn.getAttribute('data-price');
       var serviceTitle = btn.getAttribute('data-service-title');
-      handleOrderClick(serviceId, providerId, price, serviceTitle);
+      var serviceDescription = btn.getAttribute('data-service-description');
+      var originalPrice = btn.getAttribute('data-original-price') || '';
+      var discountedPrice = btn.getAttribute('data-discounted-price') || price;
+      handleOrderClick(serviceId, providerId, price, serviceTitle, serviceDescription, originalPrice, discountedPrice);
     });
   });
 }
 
 // === Order button handler (opens modal) ===
-function handleOrderClick(serviceId, providerId, price, serviceTitle) {
+function handleOrderClick(serviceId, providerId, price, serviceTitle, serviceDescription, originalPrice, discountedPrice) {
   var auth = checkAuth();
   if (!auth.isAuthenticated) {
     window.location.href = '/register';
@@ -317,7 +372,7 @@ function handleOrderClick(serviceId, providerId, price, serviceTitle) {
     return;
   }
 
-  openOrderModal(serviceId, providerId, price, serviceTitle);
+  openOrderModal(serviceId, providerId, price, serviceTitle, serviceDescription, originalPrice, discountedPrice);
 }
 
 // === Render pagination ===
@@ -417,6 +472,7 @@ function applyFilters() {
   var minPrice = document.getElementById('filter-price-min').value;
   var maxPrice = document.getElementById('filter-price-max').value;
   var sort = document.getElementById('filter-sort').value;
+  var category = document.getElementById('filter-category').value;
 
   // Validate price
   var minP = minPrice ? parseFloat(minPrice) : null;
@@ -429,6 +485,7 @@ function applyFilters() {
   filterState.search = search;
   filterState.minPrice = minP;
   filterState.maxPrice = maxP;
+  filterState.category = category;
   filterState.sort = sort;
 
   // Update URL
@@ -436,6 +493,7 @@ function applyFilters() {
   if (search) params.set('search', search);
   if (minP) params.set('min_price', minP);
   if (maxP) params.set('max_price', maxP);
+  if (category) params.set('category', category);
   if (sort !== 'newest') params.set('sort', sort);
   var qs = params.toString();
   var url = '/catalog' + (qs ? '?' + qs : '');
@@ -449,11 +507,13 @@ function resetFilters() {
   document.getElementById('filter-search').value = '';
   document.getElementById('filter-price-min').value = '';
   document.getElementById('filter-price-max').value = '';
+  document.getElementById('filter-category').value = '';
   document.getElementById('filter-sort').value = 'newest';
 
   filterState.search = '';
   filterState.minPrice = null;
   filterState.maxPrice = null;
+  filterState.category = '';
   filterState.sort = 'newest';
 
   history.pushState(null, '', '/catalog');
@@ -467,16 +527,19 @@ function readFiltersFromUrl() {
   var search = params.get('search') || '';
   var minPrice = params.get('min_price') || '';
   var maxPrice = params.get('max_price') || '';
+  var category = params.get('category') || '';
   var sort = params.get('sort') || 'newest';
 
   document.getElementById('filter-search').value = search;
   document.getElementById('filter-price-min').value = minPrice;
   document.getElementById('filter-price-max').value = maxPrice;
+  document.getElementById('filter-category').value = category;
   document.getElementById('filter-sort').value = sort;
 
   filterState.search = search;
   filterState.minPrice = minPrice ? parseFloat(minPrice) : null;
   filterState.maxPrice = maxPrice ? parseFloat(maxPrice) : null;
+  filterState.category = category;
   filterState.sort = sort;
 }
 

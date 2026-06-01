@@ -223,7 +223,7 @@ async function initMyServices() {
     serviceData = [];
     var html = '<div class="table-wrapper"><table class="orders-table"><thead><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     services.forEach(function (s) {
-      serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, status: s.status });
+      serviceData.push({ id: s.id, title: s.title, desc: s.description || '', price: s.price, category: s.category || '', discount: s.discount || '', status: s.status });
       var idx = serviceData.length - 1;
       html += '<tr><td class="order-service" data-label="Title">' + escapeHtml(s.title) + '</td>'
         + '<td class="order-amount" data-label="Price">' + formatPrice(s.price) + '</td>'
@@ -530,6 +530,8 @@ function openCreateServiceModal() {
   document.getElementById('svc-title').value = '';
   document.getElementById('svc-desc').value = '';
   document.getElementById('svc-price').value = '';
+  document.getElementById('svc-category').value = '';
+  document.getElementById('svc-discount').value = '';
   document.getElementById('svc-status').value = 'draft';
   var modal = document.getElementById('service-modal');
   modal.classList.remove('hidden');
@@ -571,6 +573,8 @@ function editServiceByIndex(idx) {
   document.getElementById('svc-title').value = d.title;
   document.getElementById('svc-desc').value = d.desc;
   document.getElementById('svc-price').value = d.price;
+  document.getElementById('svc-category').value = d.category || '';
+  document.getElementById('svc-discount').value = d.discount || '';
   document.getElementById('svc-status').value = d.status;
   var modal = document.getElementById('service-modal');
   modal.classList.remove('hidden');
@@ -592,6 +596,14 @@ async function saveService() {
   var title = document.getElementById('svc-title').value.trim();
   var desc = document.getElementById('svc-desc').value.trim();
   var price = document.getElementById('svc-price').value.trim();
+  var category = document.getElementById('svc-category').value;
+  var discount = document.getElementById('svc-discount').value;
+  var discountVal = discount ? parseInt(discount, 10) : null;
+  if (discountVal !== null && (isNaN(discountVal) || discountVal < 0 || discountVal > 100)) {
+    showAlert('Discount must be between 0 and 100', 'error');
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    return;
+  }
   var status = document.getElementById('svc-status').value;
   if (!title) { showAlert('Title is required', 'error'); return; }
   if (!price || isNaN(price) || parseFloat(price) <= 0) { showAlert('Valid price is required', 'error'); return; }
@@ -601,10 +613,10 @@ async function saveService() {
 
   try {
     if (id) {
-      await apiUpdateService(id, { title: title, description: desc || null, price: price, status: status });
+      await apiUpdateService(id, { title: title, description: desc || null, category: category || null, discount: discountVal, price: price, status: status });
       showToast('Product updated', 'success');
     } else {
-      var newSvc = await apiCreateService(title, desc || null, price);
+      var newSvc = await apiCreateService(title, desc || null, price, category || null, discountVal);
       if (status === 'published' && newSvc && newSvc.data && newSvc.data.id) {
         await apiUpdateService(newSvc.data.id, { status: 'published' });
       }
