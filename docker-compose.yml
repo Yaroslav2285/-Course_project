@@ -93,8 +93,11 @@ services:
     restart: unless-stopped
     environment:
       BLOCKCHAIN_SIM_PORT: ${BLOCKCHAIN_SIM_PORT:-8082}
+      BLOCKCHAIN_DB_PATH: /app/data/blockchain.db
     ports:
       - "8082:8082"
+    volumes:
+      - blockchain_sim_data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${BLOCKCHAIN_SIM_PORT:-8082}/health || exit 1"]
       interval: 10s
@@ -106,3 +109,5 @@ services:
 volumes:
   postgres_data:
     name: marketplace_postgres_data
+  blockchain_sim_data:
+    name: marketplace_blockchain_sim_data

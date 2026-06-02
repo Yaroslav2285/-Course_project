@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -12,6 +13,7 @@ def get_db_path() -> str:
 # LR #15: Параметризованные запросы (prepared statements) для SQLite
 def init_db(db_path: str | None = None):
     path = db_path or get_db_path()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     conn = sqlite3.connect(path)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS blocks (
