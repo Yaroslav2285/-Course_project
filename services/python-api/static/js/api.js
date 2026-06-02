@@ -53,16 +53,15 @@ async function apiFetch(path, options = {}) {
   };
 
   let res;
-  let _timedOut = false;
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(function () { _timedOut = true; controller.abort(); }, 15000);
-    options.signal = controller.signal;
-    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-    clearTimeout(timeoutId);
+    const fetchPromise = fetch(`${API_BASE}${path}`, { ...options, headers, signal: undefined });
+    const timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('TIMEOUT')); }, 15000);
+    });
+    res = await Promise.race([fetchPromise, timeoutPromise]);
   } catch (e) {
     console.error('apiFetch raw error:', e.name, e.message);
-    if (!options._retried && !_timedOut && (e.name === 'TypeError' || e.name === 'AbortError')) {
+    if (!options._retried && e.message !== 'TIMEOUT') {
       await new Promise(function (r) { setTimeout(r, 300); });
       return apiFetch(path, { _retried: true });
     }
