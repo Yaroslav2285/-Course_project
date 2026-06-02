@@ -142,3 +142,15 @@ if HAS_UI:
     if Path(STATIC_DIR).exists():
         app.mount("/api/static", StaticFiles(directory=str(STATIC_DIR)), name="api_static")
 app.include_router(v1_router)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
+        reload=settings.SERVER_RELOAD,
+        reload_excludes=["*.db", "*.db-wal", "*.db-shm"],
+    )
