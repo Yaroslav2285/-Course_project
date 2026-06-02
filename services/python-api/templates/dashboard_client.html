@@ -45,6 +45,6 @@
 {% block scripts %}
 <script src="/api/static/js/dashboard.js?v=19"></script>
 <script src="/api/static/js/wallet.js?v=5"></script>
-<script>initClientDashboard();</script>
-<script>if (typeof initWallet === 'function') initWallet();</script>
+<script>setTimeout(initClientDashboard, 1000);</script>
+<script>setTimeout(function(){if (typeof initWallet === 'function') initWallet();}, 1000);</script>
 {% endblock %}
