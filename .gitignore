@@ -6,6 +6,7 @@ __pycache__/
 *.pyd
 *.pyc
 *.pytest_cache/
+.ruff_cache/
 .coverage
 *.db
 .venv/
