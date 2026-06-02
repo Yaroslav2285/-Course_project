@@ -1,7 +1,6 @@
 import pytest
 from uuid import uuid4
 
-from models.wallet import Wallet, Transaction
 from repositories.wallets import WalletRepository, TransactionRepository
 from repositories.services import ServiceRepository
 

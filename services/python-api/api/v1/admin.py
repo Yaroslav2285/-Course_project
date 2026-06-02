@@ -1,6 +1,5 @@
 # LR #4: Async/Web
 # LR #8: Multi-user/Security — admin dispute panel
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession

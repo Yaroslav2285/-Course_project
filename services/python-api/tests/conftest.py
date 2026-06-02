@@ -2,8 +2,8 @@
 # LR #4: Async/Web
 import os
 
-# Force SQLite for tests regardless of .env or working directory
-os.environ["DB_URL"] = "sqlite+aiosqlite:///./test.db"
+# Default to SQLite for local dev; respect CI override (e.g. PostgreSQL)
+os.environ.setdefault("DB_URL", "sqlite+aiosqlite:///./test.db")
 os.environ["TESTING"] = "1"
 
 from typing import AsyncGenerator

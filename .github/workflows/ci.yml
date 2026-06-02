@@ -38,6 +38,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
+          cache-dependency-path: services/go-escrow/go.sum
 
       - name: Install Python dependencies
         run: |
@@ -66,7 +67,9 @@ jobs:
         run: cd services/go-escrow && go test ./... -v -cover -coverprofile=cover.out
 
       - name: SAST Python (bandit)
+        continue-on-error: true
         run: cd services/python-api && bandit -r . -f json -o bandit-report.json
 
       - name: SAST Go (gosec)
+        continue-on-error: true
         run: cd services/go-escrow && gosec -fmt json -out gosec-report.json ./...

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from passlib.context import CryptContext
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 DB_URL = os.getenv("DB_URL", "postgresql+asyncpg://app_user:ChangeMe123!@localhost:5432/app_db")
