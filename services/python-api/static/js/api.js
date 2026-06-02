@@ -61,6 +61,11 @@ async function apiFetch(path, options = {}) {
     clearTimeout(timeoutId);
   } catch (e) {
     console.error('apiFetch raw error:', e.name, e.message);
+    if (!options._retried && e.name === 'TypeError') {
+      options._retried = true;
+      await new Promise(function (r) { setTimeout(r, 300); });
+      return apiFetch(path, options);
+    }
     const err = new Error('Network error — server unavailable');
     err.status = 0;
     throw err;
