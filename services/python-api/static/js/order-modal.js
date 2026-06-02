@@ -190,7 +190,7 @@ async function submitOrderModal() {
         service_id: state.serviceId,
         buyer_id: user.id,
         seller_id: state.providerId,
-        amount: (parseFloat(state.price) * qty).toFixed(4)
+        amount: (parseFloat(state.discountedPrice) * qty).toFixed(4)
       })
     }, 1);
 
