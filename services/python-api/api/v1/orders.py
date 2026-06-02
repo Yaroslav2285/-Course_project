@@ -114,14 +114,11 @@ async def list_orders(
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    from models.orders import Order
     repo = OrderRepository(session)
     items, total = await repo.list_by_buyer(
         buyer_id=current_user.id, limit=limit, offset=offset, status=status
     )
-    order_list = []
-    for o in items:
-        order_list.append(await _order_to_dict(o))
+    order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
@@ -139,9 +136,7 @@ async def list_sold_orders(
     items, total = await repo.list_by_seller(
         seller_id=current_user.id, limit=limit, offset=offset, status=status
     )
-    order_list = []
-    for o in items:
-        order_list.append(await _order_to_dict(o))
+    order_list = await asyncio.gather(*[_order_to_dict(o) for o in items])
     return success_response(data=order_list, total=total, limit=limit, offset=offset)
 
 
