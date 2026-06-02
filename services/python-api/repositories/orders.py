@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models.orders import Order, OrderStatus
 from repositories.base import RepositoryBase
@@ -67,6 +68,7 @@ class OrderRepository(RepositoryBase[Order]):
 
         stmt = (
             select(self.model)
+            .options(selectinload(Order.seller), selectinload(Order.buyer), selectinload(Order.service))
             .filter_by(**filters)
             .order_by(self.model.created_at.desc())
             .offset(offset)

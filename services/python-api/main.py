@@ -1,12 +1,16 @@
 # LR #2: Modern Python
 # LR #4: Async/Web
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+
 from api.v1 import router as v1_router
 from core.config import settings
 
@@ -51,6 +55,12 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")
+    for i in range(3):
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception:
+            logger.warning("pool_warmup_attempt_failed", attempt=i + 1)
     from app.services.escrow_cache import _get_client as _init_cache
     cache_client = await _init_cache()
     if cache_client is not None and cache_client is not False:
@@ -88,6 +98,16 @@ async def add_x_request_id(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+@app.middleware("http")
+async def timeout_middleware(request: Request, call_next):
+    try:
+        response = await asyncio.wait_for(call_next(request), timeout=25.0)
+        return response
+    except asyncio.TimeoutError:
+        logger.error("request_timeout", method=request.method, path=request.url.path)
+        return JSONResponse(status_code=504, content={"data": None, "meta": {}, "errors": [{"code": "TIMEOUT", "detail": "Request timed out"}]})
 
 
 @app.middleware("http")
