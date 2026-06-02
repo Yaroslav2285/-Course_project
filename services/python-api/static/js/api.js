@@ -61,7 +61,7 @@ async function apiFetch(path, options = {}) {
     clearTimeout(timeoutId);
   } catch (e) {
     console.error('apiFetch raw error:', e.name, e.message);
-    if (!options._retried && e.name === 'TypeError') {
+    if (!options._retried && (e.name === 'TypeError' || e.name === 'AbortError')) {
       options._retried = true;
       await new Promise(function (r) { setTimeout(r, 300); });
       return apiFetch(path, options);
