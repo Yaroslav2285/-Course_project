@@ -27,7 +27,7 @@ async def _order_to_dict(order: Order) -> dict:
         "amount": str(order.amount),
         "status": order.status,
         "notes": order.notes,
-        "blockchain_verified": await _check_blockchain_audit(str(order.id)),
+        "blockchain_verified": await _check_blockchain_audit(order),
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "updated_at": order.updated_at.isoformat() if order.updated_at else None,
     }

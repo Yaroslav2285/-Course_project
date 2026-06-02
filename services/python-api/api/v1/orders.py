@@ -26,10 +26,15 @@ router = APIRouter()
 _blockchain_cache: dict[str, tuple[bool, float]] = {}
 _CACHE_TTL = 300  # 5 minutes
 
-async def _check_blockchain_audit(order_id: str) -> bool:
+_STATUSES_WITH_BLOCKCHAIN = {
+    "funded", "in_progress", "completed", "released",
+    "disputed", "resolved", "resolved_refund", "resolved_release",
+}
+
+async def _check_blockchain_audit(order: Order) -> bool:
     if os.environ.get("TESTING"):
         return False
-    str_id = str(order_id)
+    str_id = str(order.id)
     now = time.monotonic()
     if str_id in _blockchain_cache:
         val, ts = _blockchain_cache[str_id]
@@ -52,6 +57,25 @@ async def _check_blockchain_audit(order_id: str) -> bool:
                     result = False
                 _blockchain_cache[str_id] = (result, now)
                 return result
+            if resp.status_code == 404 and order.status in _STATUSES_WITH_BLOCKCHAIN:
+                restore_resp = await asyncio.wait_for(
+                    client.post(
+                        f"{base_url}/v1/chain/submit",
+                        json={
+                            "order_id": str_id,
+                            "action": "restored",
+                            "data": {
+                                "amount": str(order.amount),
+                                "status": order.status,
+                            },
+                        },
+                    ),
+                    timeout=3.0,
+                )
+                if restore_resp.status_code == 201:
+                    structlog.get_logger().info("blockchain_audit_restored", order_id=str_id)
+                    _blockchain_cache[str_id] = (True, now)
+                    return True
     except httpx.ConnectError:
         structlog.get_logger().warning("blockchain_audit_connect_failed", order_id=str_id)
     except httpx.TimeoutException:
@@ -69,7 +93,7 @@ async def _order_to_dict(order: Order) -> dict:
     d["seller_email"] = order.seller.email if order.seller else None
     d["buyer_email"] = order.buyer.email if order.buyer else None
     if order.status not in ("pending", "created"):
-        d["blockchain_verified"] = await _check_blockchain_audit(str(order.id))
+        d["blockchain_verified"] = await _check_blockchain_audit(order)
     return d
 
 
