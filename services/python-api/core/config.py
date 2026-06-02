@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 
     GO_ESCROW_BASE_URL: str = "http://go-escrow:8081"
+    BLOCKCHAIN_SIM_BASE_URL: str = "http://blockchain-sim:8082"
     REDIS_URL: str = "redis://localhost:6379/0"
 
     ESCROW_USER_ID: str = "1133d650-e7d4-41de-8877-c359682903a4"

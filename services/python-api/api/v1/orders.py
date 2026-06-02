@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from core.db import get_db
 from core.deps import get_current_user
 from core.exceptions import NotFoundException
@@ -34,9 +35,13 @@ async def _check_blockchain_audit(order_id: str) -> bool:
         val, ts = _blockchain_cache[str_id]
         if now - ts < _CACHE_TTL:
             return val
+    base_url = settings.BLOCKCHAIN_SIM_BASE_URL.rstrip("/")
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(2.0, connect=1.0)) as client:
-            resp = await client.get(f"http://blockchain-sim:8082/v1/chain/audit/{str_id}")
+        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=2.0)) as client:
+            resp = await asyncio.wait_for(
+                client.get(f"{base_url}/v1/chain/audit/{str_id}"),
+                timeout=3.0,
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 if isinstance(data, list):
@@ -51,6 +56,8 @@ async def _check_blockchain_audit(order_id: str) -> bool:
         structlog.get_logger().warning("blockchain_audit_connect_failed", order_id=str_id)
     except httpx.TimeoutException:
         structlog.get_logger().warning("blockchain_audit_timeout", order_id=str_id)
+    except asyncio.TimeoutError:
+        structlog.get_logger().warning("blockchain_audit_asyncio_timeout", order_id=str_id)
     except Exception:
         structlog.get_logger().exception("blockchain_audit_unexpected_error", order_id=str_id)
     _blockchain_cache[str_id] = (False, now)
