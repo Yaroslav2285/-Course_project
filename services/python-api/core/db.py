@@ -19,6 +19,7 @@ def _register_sqlite_now(dbapi_connection, connection_record):
 engine = create_async_engine(
     settings.DB_URL,
     echo=settings.DB_ECHO,
+    pool_pre_ping=True,
     **(dict(pool_size=5, max_overflow=10) if not _is_sqlite else dict(connect_args={"check_same_thread": False})),
 )
 
