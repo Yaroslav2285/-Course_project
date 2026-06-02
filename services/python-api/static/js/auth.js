@@ -70,17 +70,11 @@ async function handleLogin(event) {
     // ✅ FIX: Redirect based on role, NEVER to /
     var role = data.user.role || 'client';
     if (role === 'provider') {
-      setTimeout(function () {
-        window.location.href = '/dashboard/executor';
-      }, 300);
+      window.location.href = '/dashboard/executor';
     } else if (role === 'admin') {
-      setTimeout(function () {
-        window.location.href = '/admin/disputes';
-      }, 300);
+      window.location.href = '/admin/disputes';
     } else {
-      setTimeout(function () {
-        window.location.href = '/dashboard/client';
-      }, 300);
+      window.location.href = '/dashboard/client';
     }
   } catch (err) {
     showAlert(err.message, 'error');
@@ -149,17 +143,11 @@ async function handleRegister(event) {
     // ✅ FIX: Redirect based on role, NEVER to /
     var userRole = data.user.role || 'client';
     if (userRole === 'provider') {
-      setTimeout(function () {
-        window.location.href = '/dashboard/executor';
-      }, 300);
+      window.location.href = '/dashboard/executor';
     } else if (userRole === 'admin') {
-      setTimeout(function () {
-        window.location.href = '/admin/disputes';
-      }, 300);
+      window.location.href = '/admin/disputes';
     } else {
-      setTimeout(function () {
-        window.location.href = '/dashboard/client';
-      }, 300);
+      window.location.href = '/dashboard/client';
     }
   } catch (err) {
     showAlert(err.message, 'error');

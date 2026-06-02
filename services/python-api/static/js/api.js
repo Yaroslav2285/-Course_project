@@ -60,6 +60,7 @@ async function apiFetch(path, options = {}) {
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
     clearTimeout(timeoutId);
   } catch (e) {
+    console.error('apiFetch raw error:', e.name, e.message);
     const err = new Error('Network error — server unavailable');
     err.status = 0;
     throw err;
