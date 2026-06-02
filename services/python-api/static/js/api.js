@@ -53,18 +53,18 @@ async function apiFetch(path, options = {}) {
   };
 
   let res;
+  let _timedOut = false;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+    const timeoutId = setTimeout(function () { _timedOut = true; controller.abort(); }, 15000);
     options.signal = controller.signal;
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
     clearTimeout(timeoutId);
   } catch (e) {
     console.error('apiFetch raw error:', e.name, e.message);
-    if (!options._retried && (e.name === 'TypeError' || e.name === 'AbortError')) {
-      options._retried = true;
+    if (!options._retried && !_timedOut && (e.name === 'TypeError' || e.name === 'AbortError')) {
       await new Promise(function (r) { setTimeout(r, 300); });
-      return apiFetch(path, options);
+      return apiFetch(path, { _retried: true });
     }
     const err = new Error('Network error — server unavailable');
     err.status = 0;
