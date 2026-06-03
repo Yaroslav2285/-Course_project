@@ -8,31 +8,28 @@ from core.security import hash_password
 
 
 @pytest.mark.asyncio
-async def test_admin_list_disputes(client, engine):
-    from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as s:
-        admin = User(
-            id=uuid4(), email="admin@test.com",
-            hashed_password=hash_password("admin123"), role="admin",
-        )
-        s.add(admin)
-        buyer = User(
-            id=uuid4(), email="buyer@test.com",
-            hashed_password=hash_password("pass123"), role="client",
-        )
-        s.add(buyer)
-        seller = User(
-            id=uuid4(), email="seller@test.com",
-            hashed_password=hash_password("pass123"), role="provider",
-        )
-        s.add(seller)
-        svc = Service(provider_id=seller.id, title="Test", price="100.0000", status="published")
-        s.add(svc)
-        await s.flush()
-        order = Order(service_id=svc.id, buyer_id=buyer.id, seller_id=seller.id, amount="100.0000", status="disputed")
-        s.add(order)
-        await s.commit()
+async def test_admin_list_disputes(client, session):
+    admin = User(
+        id=uuid4(), email="admin@test.com",
+        hashed_password=hash_password("admin123"), role="admin",
+    )
+    session.add(admin)
+    buyer = User(
+        id=uuid4(), email="buyer@test.com",
+        hashed_password=hash_password("pass123"), role="client",
+    )
+    session.add(buyer)
+    seller = User(
+        id=uuid4(), email="seller@test.com",
+        hashed_password=hash_password("pass123"), role="provider",
+    )
+    session.add(seller)
+    svc = Service(provider_id=seller.id, title="Test", price="100.0000", status="published")
+    session.add(svc)
+    await session.flush()
+    order = Order(service_id=svc.id, buyer_id=buyer.id, seller_id=seller.id, amount="100.0000", status="disputed")
+    session.add(order)
+    await session.commit()
 
     admin_resp = await client.post(
         "/v1/auth/login", json={"email": "admin@test.com", "password": "admin123"}
