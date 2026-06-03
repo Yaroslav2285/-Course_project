@@ -24,12 +24,13 @@ from models.users import User
 TEST_DB_URL = settings.DB_URL
 
 
-@pytest_asyncio.fixture(scope="function", loop_scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def engine():
     async_engine = create_async_engine(TEST_DB_URL, echo=False)
     if TEST_DB_URL.startswith("sqlite"):
         event.listen(async_engine.sync_engine, "connect", _register_sqlite_now)
     async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield async_engine
     async with async_engine.begin() as conn:
