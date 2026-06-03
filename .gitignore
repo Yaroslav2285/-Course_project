@@ -34,6 +34,16 @@ README_AI.md
 .vscode/
 .idea/
 
+# Generated docs artifacts
+*.docx
+*.mmd
+~$*
+*.tmp
+generate_docx.py
+fix_*.py
+fix_*.ps1
+coursework_out.txt
+
 # System
 .DS_Store
 Thumbs.db
