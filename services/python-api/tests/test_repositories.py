@@ -1,6 +1,8 @@
 import pytest
 from uuid import uuid4
 
+from core.security import hash_password
+from models.users import User
 from repositories.wallets import WalletRepository, TransactionRepository
 from repositories.services import ServiceRepository
 
@@ -43,6 +45,9 @@ async def test_service_repo_update_no_changes(session):
 async def test_wallet_get_or_create_race(session):
     repo = WalletRepository(session)
     user_id = uuid4()
+    session.add(User(id=user_id, email=f"w-{user_id.hex[:8]}@test.com",
+                     hashed_password=hash_password("x"), role="client"))
+    await session.flush()
     w1 = await repo.get_or_create(user_id)
     assert w1.balance == 0
     w2 = await repo.get_or_create(user_id)
@@ -54,6 +59,9 @@ async def test_transaction_get_by_reference(session):
     wallet_repo = WalletRepository(session)
     txn_repo = TransactionRepository(session)
     user_id = uuid4()
+    session.add(User(id=user_id, email=f"t-{user_id.hex[:8]}@test.com",
+                     hashed_password=hash_password("x"), role="client"))
+    await session.flush()
     wallet = await wallet_repo.get_or_create(user_id)
     txn = await txn_repo.create_transaction(
         wallet_id=wallet.id, type="transfer", amount=50, status="success", reference_id=uuid4(),

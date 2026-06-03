@@ -264,6 +264,11 @@ async def test_transfer_insufficient_balance(session):
     wallet_repo = WalletRepository(session)
     user_a = uuid4()
     user_b = uuid4()
+    session.add(User(id=user_a, email=f"a-{user_a.hex[:8]}@test.com",
+                     hashed_password=hash_password("x"), role="client"))
+    session.add(User(id=user_b, email=f"b-{user_b.hex[:8]}@test.com",
+                     hashed_password=hash_password("x"), role="client"))
+    await session.flush()
 
     wallet_a = await wallet_repo.get_or_create(user_a)
     await wallet_repo.update_balance(wallet_a, Decimal("50.0000"))
