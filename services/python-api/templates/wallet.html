@@ -11,16 +11,16 @@
 <!-- Wallet History -->
 <div class="card">
   <div class="wallet-history-header">
-    <h3>История операций</h3>
+    <h3>Transaction History</h3>
   </div>
   <div class="wallet-history-table-wrap">
-    <table class="wallet-history-table" role="table" aria-label="История операций кошелька">
+    <table class="wallet-history-table" role="table" aria-label="Wallet Transaction History">
       <thead>
         <tr>
-          <th scope="col">Дата</th>
-          <th scope="col">Тип</th>
-          <th scope="col">Сумма</th>
-          <th scope="col">Статус</th>
+          <th scope="col">Date</th>
+          <th scope="col">Type</th>
+          <th scope="col">Amount</th>
+          <th scope="col">Status</th>
           <th scope="col">ID</th>
         </tr>
       </thead>
@@ -30,10 +30,10 @@
     </table>
   </div>
   <div id="wallet-history-empty" class="wallet-history-empty" style="display:none;">
-    Нет операций
+    No transactions
   </div>
   <div class="wallet-history-footer">
-    <button id="wallet-history-more" class="btn btn-outline btn-sm" style="display:none;">Показать ещё</button>
+    <button id="wallet-history-more" class="btn btn-outline btn-sm" style="display:none;">Show more</button>
   </div>
 </div>
 {% endblock %}
