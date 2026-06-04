@@ -43,7 +43,6 @@
 
 | Документ | Описание |
 |----------|----------|
-| [`demo-script.md`](demo-script.md) | Пошаговый сценарий защиты (8 шагов) |
 | [`contracts/escrow-api.md`](contracts/escrow-api.md) | REST-контракт Python API ↔ Go Escrow (7 эндпоинтов) |
 | [`contracts/blockchain-events.md`](contracts/blockchain-events.md) | REST-контракт Go Escrow ↔ Blockchain Sim |
 | [`ai-usage-log.md`](ai-usage-log.md) | Журнал изменений |
@@ -293,44 +292,81 @@ cd services/blockchain-sim && pytest -v
 
 ```
 .
-├── .github/workflows/ci.yml    # GitHub Actions: lint → test → sast
+├── .editorconfig                # Единый стиль кода
+├── .env.example                 # Шаблон переменных окружения
+├── .gitattributes               # Настройки git
+├── .gitignore                   # Игнорируемые файлы
+├── .github/workflows/ci.yml     # GitHub Actions: lint → test → sast
+├── .pre-commit-config.yaml      # black, ruff, gofmt, bandit
 ├── docker-compose.yml           # 5 сервисов + 2 named volumes
 ├── Makefile                     # up, down, test, lint, sast, build
-├── .pre-commit-config.yaml      # black, ruff, gofmt, bandit
-├── .env.example                 # Шаблон переменных окружения
 ├── docs/
 │   ├── README.md
-│   ├── demo-script.md
-│   ├── contracts/
-│   │   ├── escrow-api.md
-│   │   └── blockchain-events.md
-│   └── ai-usage-log.md
+│   ├── ai-usage-log.md
+│   └── contracts/
+│       ├── escrow-api.md
+│       └── blockchain-events.md
+├── infra/
+│   └── .gitkeep
+├── scripts/
+│   ├── check_disputes.py
+│   ├── reconcile_escrow.py
+│   ├── seed-admin.ps1
+│   └── seed_db.py
 └── services/
     ├── python-api/              # FastAPI + SQLAlchemy async
+    │   ├── __init__.py
+    │   ├── alembic.ini
+    │   ├── Dockerfile
+    │   ├── main.py
+    │   ├── pytest.ini
+    │   ├── requirements.txt
+    │   ├── alembic/             # Миграции БД
+    │   │   └── versions/
     │   ├── api/v1/              # auth, users, services, orders, wallet, escrow, chain, admin, ui
     │   ├── app/services/        # escrow_client, escrow_cache
     │   ├── core/                # config, db, security, exceptions, deps, responses
     │   ├── models/              # users, services, orders, wallet
     │   ├── schemas/             # pydantic-схемы с condecimal
     │   ├── repositories/        # CRUD-слой
-    │   ├── templates/           # Jinja2 UI (15 шаблонов)
+    │   ├── scripts/             # Утилиты
+    │   │   ├── migrate_sqlite_to_pg.py
+    │   │   ├── seed_admin.py
+    │   │   └── seed_categories.py
     │   ├── static/              # CSS (8) + JS (13) — vanilla
-    │   ├── alembic/             # 7 миграций
-    │   └── tests/               # 80 тестов
+    │   ├── templates/           # Jinja2 UI (15 шаблонов)
+    │   └── tests/               # 81 тест
     ├── go-escrow/               # Gin + state-machine
-    │   ├── internal/
-    │   │   ├── api/             # handlers, middleware, router, idempotency
-    │   │   ├── clients/         # blockchain_client (retry queue)
-    │   │   ├── config/
-    │   │   ├── db/
-    │   │   ├── domain/          # state-machine (8 статусов)
-    │   │   ├── repository/      # SQL с prepared statements
-    │   │   ├── service/         # бизнес-логика + blockchain events
-    │   │   └── testutil/
-    │   └── cmd/healthcheck/
+    │   ├── .env.example
+    │   ├── Dockerfile
+    │   ├── Makefile
+    │   ├── go.mod / go.sum
+    │   ├── integration_test.go
+    │   ├── main.go
+    │   ├── swag_docs.go
+    │   ├── cmd/healthcheck/
+    │   ├── docs/                # Swagger-спецификация
+    │   │   ├── docs.go
+    │   │   ├── swagger.json
+    │   │   └── swagger.yaml
+    │   └── internal/
+    │       ├── api/             # handlers, middleware, router, idempotency
+    │       ├── clients/         # blockchain_client (retry queue)
+    │       ├── config/
+    │       ├── db/
+    │       ├── domain/          # state-machine (8 статусов)
+    │       ├── repository/      # SQL с prepared statements
+    │       ├── service/         # бизнес-логика + blockchain events
+    │       └── testutil/        # Вспомогательные утилиты для тестов
     └── blockchain-sim/          # FastAPI + SHA-256 + SQLite
+        ├── .dockerignore
+        ├── Dockerfile
         ├── blockchain.py        # Block/Blockchain цепочка
+        ├── config.py            # Конфигурация
         ├── database.py          # SQLite persistence + makedirs
+        ├── main.py              # Точка входа
+        ├── requirements.txt
+        ├── schemas.py           # Pydantic-схемы
         └── tests/               # 26 тестов, 99% coverage
 ```
 
