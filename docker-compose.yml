@@ -74,7 +74,7 @@ services:
     container_name: marketplace_go_escrow
     restart: unless-stopped
     environment:
-      DB_URL: ${DB_URL:-postgresql://app_user:ChangeMe123!@postgres:5432/app_db?sslmode=disable}
+      GO_DB_URL: ${GO_DB_URL:-postgresql://app_user:ChangeMe123!@postgres:5432/app_db?sslmode=disable}
       GO_ESCROW_PORT: ${GO_ESCROW_PORT:-8081}
       BLOCKCHAIN_SIM_URL: ${BLOCKCHAIN_SIM_URL:-http://blockchain-sim:8082}
     ports:
