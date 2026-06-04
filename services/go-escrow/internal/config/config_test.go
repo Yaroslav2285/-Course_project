@@ -29,7 +29,7 @@ func setEnv(t *testing.T, vars map[string]string) func() {
 
 func TestLoad_AllEnvSet(t *testing.T) {
 	restore := setEnv(t, map[string]string{
-		"DB_URL":              "postgres://user:pass@localhost:5432/testdb",
+		"GO_DB_URL":           "postgres://user:pass@localhost:5432/testdb",
 		"GO_ESCROW_PORT":      "9090",
 		"RATE_LIMIT_RPS":      "50",
 		"RATE_LIMIT_BURST":    "100",
@@ -53,7 +53,7 @@ func TestLoad_AllEnvSet(t *testing.T) {
 
 func TestLoad_Defaults(t *testing.T) {
 	restore := setEnv(t, map[string]string{
-		"DB_URL": "postgres://user:pass@localhost:5432/testdb",
+		"GO_DB_URL": "postgres://user:pass@localhost:5432/testdb",
 	})
 	defer restore()
 
@@ -76,7 +76,7 @@ func TestLoad_MissingDBURL(t *testing.T) {
 
 func TestLoad_PartialEnv(t *testing.T) {
 	restore := setEnv(t, map[string]string{
-		"DB_URL":         "postgres://localhost:5432/mydb",
+		"GO_DB_URL":      "postgres://localhost:5432/mydb",
 		"RATE_LIMIT_RPS": "100",
 	})
 	defer restore()

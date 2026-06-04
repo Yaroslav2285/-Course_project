@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	DBURL            string        `envconfig:"DB_URL" required:"true"`
+	DBURL            string        `envconfig:"GO_DB_URL" required:"true"`
 	Port             string        `envconfig:"GO_ESCROW_PORT" default:"8081"`
 	RateLimitRPS     int           `envconfig:"RATE_LIMIT_RPS" default:"10"`
 	RateLimitBurst   int           `envconfig:"RATE_LIMIT_BURST" default:"20"`
